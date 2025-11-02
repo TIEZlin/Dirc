@@ -1,12 +1,9 @@
 import axios from 'axios'
 
-// 创建axios实例
+// 创建统一的axios实例（用于所有请求）
 const api = axios.create({
-  baseURL: process.env.VUE_APP_API_BASE_URL || 'http://localhost:3000/api',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  baseURL: '/api',
+  timeout: 10000
 })
 
 // 请求拦截器 - 添加认证token
@@ -26,14 +23,26 @@ api.interceptors.request.use(
 // 响应拦截器 - 统一处理错误
 api.interceptors.response.use(
   (response) => {
-    return response.data
+    // 检查响应头中是否有token
+    const token = response.headers['authorization'] || response.headers['x-auth-token'] || response.headers['access-token'];
+    if (token) {
+      // 如果有token，保存到localStorage中
+      localStorage.setItem('token', token.replace('Bearer ', ''));
+    }
+    
+    // 返回完整的响应对象，而不仅仅是response.data
+    // 这样Vuex action可以访问响应头
+    return response;
   },
   (error) => {
+    console.error('API错误:', error); // 添加日志以便调试
+    
     // 处理认证错误
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      window.location.href = '/login'
+      // 不要直接跳转，让应用自己处理
+      // window.location.href = '/login'
     }
     
     // 处理网络错误
@@ -47,7 +56,7 @@ api.interceptors.response.use(
 
 export default api
 
-// 导出所有API模块
+// 导出所有API模块，都使用同一个api实例
 export { authAPI } from './auth'
 export { courseAPI } from './course'
 export { resourceAPI } from './resource'
@@ -57,5 +66,3 @@ export { uploadAPI } from './upload'
 export { notificationAPI } from './notification'
 export { searchAPI } from './search'
 export { statsAPI } from './stats'
-export { commentAPI } from './comment'
-

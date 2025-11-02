@@ -141,5 +141,3 @@ export const resourceAPI = {
   }
 }
 
-
-
