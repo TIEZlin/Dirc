@@ -42,7 +42,11 @@
           </select>
         </div>
         <div class="col-span-2 flex justify-end">
-          <button class="btn-primary flex items-center h-10">
+          <button class="btn-primary flex items-center h-10 mr-3" @click="onSearchDoc">
+            <span class="iconify mr-2" data-icon="mdi:magnify"></span>
+            文档版搜索
+          </button>
+          <button class="btn-secondary flex items-center h-10" @click="onUploadMock">
             <span class="iconify mr-2" data-icon="mdi:upload"></span>
             上传资源
           </button>
@@ -65,7 +69,14 @@
 
     <!-- 全部资源列表 -->
     <h2 class="text-xl font-bold mb-4">全部资源</h2>
-    <div class="custom-grid">
+    
+    <!-- 空状态与重试 -->
+    <div v-if="filteredResources.length === 0" class="card p-8 text-center text-gray-600 mb-8">
+      <p class="mb-4">暂无资源数据或加载失败。</p>
+      <button class="btn-primary" @click="onSearchDoc">重试加载</button>
+    </div>
+
+    <div v-else class="custom-grid">
       <div 
         v-for="resource in filteredResources" 
         :key="resource.id"
@@ -103,17 +114,27 @@
             <span>{{ resource.rating }}</span>
           </div>
         </div>
+        <div class="grid grid-cols-2 gap-2 mt-3">
+          <button 
+            class="btn-secondary w-full text-sm"
+            @click="viewResourceDetail(resource)"
+          >查看详情</button>
+          <button 
+            class="btn-primary w-full text-sm"
+            @click="onDownload(resource)"
+          >下载</button>
+        </div>
         <button 
-          class="btn-secondary w-full mt-3 text-sm"
-          @click="viewResourceDetail(resource)"
-        >查看详情</button>
+          class="btn-danger w-full mt-2 text-xs"
+          @click="onReport(resource)"
+        >举报</button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapGetters, mapActions } from 'vuex'
 import ResourceCard from '../components/ResourceCard.vue'
 
 export default {
@@ -147,14 +168,55 @@ export default {
     }
   },
   methods: {
+    ...mapActions(['updateFilter', 'searchResources', 'getResourceDownloadUrl', 'reportResource', 'uploadResource']),
     onCourseFilterChange() {
-      this.$store.dispatch('updateFilter', { key: 'courseTitle', value: this.selectedCourseTitle })
+      this.updateFilter({ key: 'courseTitle', value: this.selectedCourseTitle })
     },
     onTypeFilterChange() {
-      this.$store.dispatch('updateFilter', { key: 'resourceType', value: this.selectedType })
+      this.updateFilter({ key: 'resourceType', value: this.selectedType })
     },
     onRatingFilterChange() {
-      this.$store.dispatch('updateFilter', { key: 'resourceRating', value: this.selectedRating })
+      this.updateFilter({ key: 'resourceRating', value: this.selectedRating })
+    },
+    async onSearchDoc() {
+      try {
+        const params = { page_size: 10, page_num: 1 }
+        // keyword 暂不从UI输入，保持空；类型映射
+        if (this.selectedType && this.selectedType !== '全部类型') params.sortBy = 'latest'
+        // 评分筛选不在文档搜索直接支持，先忽略或前端过滤
+        const res = await this.searchResources('', params)
+        // searchResources 已返回 data，且 store 内会未变更资源；这里不强制覆盖
+        console.log('文档版资源搜索完成', res)
+      } catch (e) {
+        this.$store.commit('SET_ERROR', { title: '加载失败', message: '无法加载资源列表，请稍后重试' })
+      }
+    },
+    async onDownload(resource) {
+      try {
+        const data = await this.getResourceDownloadUrl(resource.id)
+        if (data && data.download_url) {
+          window.location.href = data.download_url
+          this.$store.commit('INCREMENT_RESOURCE_DOWNLOADS', resource.id)
+        }
+      } catch (e) {
+        alert('下载失败，请稍后重试')
+      }
+    },
+    async onReport(resource) {
+      try {
+        await this.reportResource({ resourceId: resource.id, reason: '低质量或侵权' })
+        alert('举报已提交')
+      } catch (e) {
+        alert('举报失败，请稍后重试')
+      }
+    },
+    async onUploadMock() {
+      try {
+        await this.uploadResource({ title: '示例上传', course_id: 1, tags: [{ tagId: 1, tagName: '示例' }] })
+        alert('上传完成（示例）')
+      } catch (e) {
+        alert('上传失败，请稍后重试')
+      }
     },
     getTypeClass(type) {
       const classes = {

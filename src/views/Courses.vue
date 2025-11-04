@@ -13,7 +13,7 @@
             <select 
               class="w-full border border-gray-300 rounded-md py-2 px-3"
               v-model="filters.college"
-              @change="updateFilter('college', filters.college)"
+              @change="onFilterChange('college', filters.college)"
             >
               <option>全部学院</option>
               <option>计算机学院</option>
@@ -26,7 +26,7 @@
             <select 
               class="w-full border border-gray-300 rounded-md py-2 px-3"
               v-model="filters.credits"
-              @change="updateFilter('credits', filters.credits)"
+              @change="onFilterChange('credits', filters.credits)"
             >
               <option>不限学分</option>
               <option>1学分</option>
@@ -40,7 +40,7 @@
             <select 
               class="w-full border border-gray-300 rounded-md py-2 px-3"
               v-model="filters.rating"
-              @change="updateFilter('rating', filters.rating)"
+              @change="onFilterChange('rating', filters.rating)"
             >
               <option>全部评分</option>
               <option>4分以上</option>
@@ -50,8 +50,14 @@
         </div>
       </div>
 
+      <!-- 空状态与重试 -->
+      <div v-if="filteredCourses.length === 0" class="card p-8 text-center text-gray-600 mb-8">
+        <p class="mb-4">暂无课程数据或加载失败。</p>
+        <button class="btn-primary" @click="loadCoursesDoc">重试加载</button>
+      </div>
+
       <!-- 课程列表 -->
-      <div class="custom-grid">
+      <div v-else class="custom-grid">
         <CourseCard 
           v-for="course in filteredCourses" 
           :key="course.id"
@@ -343,7 +349,44 @@ export default {
     ...mapGetters(['filteredCourses'])
   },
   methods: {
-    ...mapActions(['submitRating', 'updateFilter', 'selectCourse']),
+    ...mapActions(['submitRating', 'updateFilter', 'selectCourse', 'searchCoursesDoc']),
+    async loadCoursesDoc() {
+      // 将现有筛选条件映射到文档版参数
+      const params = {}
+      // 学院 -> 暂无真实映射，保留占位（若后端需要，可传 collegeId）
+      // 评分 -> minRating
+      if (this.filters.rating && this.filters.rating !== '全部评分') {
+        const num = parseFloat(String(this.filters.rating).replace('分以上', ''))
+        if (!isNaN(num)) params.minRating = num
+      }
+      // 学分 -> 暂不映射（文档未定义学分筛选）
+      // 分页
+      params.page_size = 20
+      params.page_num = 1
+
+      try {
+        const data = await this.searchCoursesDoc(params)
+        // 文档返回 { baseResponse, courses: [...] }
+        const list = Array.isArray(data?.courses) ? data.courses : []
+        const mapped = list.map(item => ({
+          id: item.courseId,
+          title: item.courseName,
+          instructor: '授课教师',
+          college: '学院',
+          rating: 4.0,
+          credits: item.credit,
+          description: item.description,
+          image: '/images/courses/course-placeholder.svg'
+        }))
+        this.$store.commit('SET_COURSES', mapped)
+      } catch (e) {
+        this.$store.commit('SET_ERROR', { title: '加载失败', message: '无法加载课程列表，请稍后重试' })
+      }
+    },
+    async onFilterChange(key, value) {
+      await this.updateFilter({ key, value })
+      await this.loadCoursesDoc()
+    },
     viewCourseDetails(course) {
       this.selectCourse(course)
     },
