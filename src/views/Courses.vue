@@ -473,10 +473,36 @@ export default {
       }
     }
   },
+  watch: {
+    selectedCourse: {
+      immediate: false,
+      async handler(course) {
+        try {
+          if (course && course.id) {
+            await this.$store.dispatch('fetchCourseComments', course.id)
+          } else {
+            // 未选中课程时，清空评论，避免残留
+            this.$store.commit('SET_COMMENTS', [])
+          }
+        } catch (error) {
+          console.error('加载课程评论失败:', {
+            status: error?.response?.status,
+            data: error?.response?.data
+          })
+          const msg = error?.response?.data?.message || error?.message || '加载课程评论失败'
+          this.$root?.$emit?.('message', msg, 'error')
+        }
+      }
+    }
+  },
   async created() {
     try {
-      // 加载课程列表（已经包含本地数据兜底）
+      // 加载课程列表（已有本地数据兜底）
       await this.$store.dispatch('fetchCourses')
+      // 新增：如果进入页面时已有选中课程，主动拉取该课程评论
+      if (this.selectedCourse?.id) {
+        await this.$store.dispatch('fetchCourseComments', this.selectedCourse.id)
+      }
     } catch (error) {
       console.error('加载课程失败:', error)
       // 即使出错，也尝试使用state中已有的数据
