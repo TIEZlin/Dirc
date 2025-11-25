@@ -2,7 +2,89 @@
   <div class="px-8 py-6">
     <!-- 如果没有选中课程，显示课程列表 -->
     <template v-if="!selectedCourse">
-      <h1 class="text-3xl font-bold mb-6">全部课程</h1>
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-3xl font-bold">全部课程</h1>
+        
+        <!-- 搜索框组件 -->
+        <div class="relative w-80">
+          <input
+            type="text"
+            v-model="searchKeyword"
+            @input="debouncedSearch"
+            @focus="showSearchHistory = true"
+            @keydown.down.prevent="navigateSuggestions(1)"
+            @keydown.up.prevent="navigateSuggestions(-1)"
+            @keydown.enter="executeSearch"
+            placeholder="搜索课程名称、教师、分类等"
+            class="w-full py-2 px-4 pr-10 border-2 border-blue-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-200"
+          />
+          <button
+            @click="executeSearch"
+            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-500 hover:text-blue-700 transition-colors"
+          >
+            <span class="iconify text-xl" data-icon="mdi:magnify"></span>
+          </button>
+          
+          <!-- 搜索历史和联想下拉列表 -->
+          <div
+            v-if="showSearchHistory || searchSuggestions.length > 0"
+            class="absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-96 overflow-y-auto"
+          >
+            <!-- 搜索历史 -->
+            <div v-if="showSearchHistory && searchHistory.length > 0" class="p-2 border-b border-gray-200">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-medium text-gray-500">搜索历史</span>
+                <button
+                  @click="clearAllHistory"
+                  class="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  清除全部
+                </button>
+              </div>
+              <ul>
+                <li
+                  v-for="(history, index) in searchHistory"
+                  :key="'history-' + index"
+                  class="flex items-center justify-between py-2 px-3 hover:bg-gray-100 cursor-pointer transition-colors"
+                  @click="selectHistory(history)"
+                >
+                  <span class="text-sm flex items-center">
+                    <span class="iconify mr-2 text-gray-400" data-icon="mdi:clock-outline"></span>
+                    {{ history }}
+                  </span>
+                  <button
+                    @click.stop="deleteHistory(history)"
+                    class="text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <span class="iconify text-sm" data-icon="mdi:close"></span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- 搜索联想 -->
+            <div v-if="searchSuggestions.length > 0" class="p-2">
+              <div v-if="showSearchHistory && searchHistory.length > 0" class="text-sm font-medium text-gray-500 mb-2">搜索联想</div>
+              <ul>
+                <li
+                  v-for="(suggestion, index) in searchSuggestions"
+                  :key="'suggestion-' + index"
+                  :class="['flex items-center py-2 px-3 cursor-pointer transition-colors', activeSuggestionIndex === index ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100']"
+                  @click="selectSuggestion(suggestion)"
+                >
+                  <span class="iconify mr-2 text-gray-400" data-icon="mdi:magnify"></span>
+                  <span class="text-sm">{{ suggestion }}</span>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- 空状态 -->
+            <div v-if="showSearchHistory && searchHistory.length === 0 && searchSuggestions.length === 0" class="p-4 text-center text-gray-500">
+              暂无搜索历史
+            </div>
+          </div>
+        </div>
+      </div>
       
       <!-- 课程筛选 -->
       <div class="bg-white card p-5 mb-8">
@@ -50,21 +132,68 @@
         </div>
       </div>
 
+      <!-- 搜索结果统计 -->
+      <div v-if="hasSearched && searchKeyword" class="mb-4 text-sm text-gray-600">
+        <span v-if="!isSearching">
+          找到 <strong>{{ searchResults.length }}</strong> 个与 "{{ searchKeyword }}" 相关的课程
+        </span>
+        <span v-else class="flex items-center">
+          <span class="iconify animate-spin mr-2" data-icon="mdi:loading"></span>
+          搜索中...
+        </span>
+      </div>
+
+      <!-- 加载状态 -->
+      <div v-if="$store.state.loading.courses" class="card p-8 text-center text-gray-600 mb-8">
+        <div class="flex flex-col items-center justify-center">
+          <span class="iconify text-4xl animate-spin mb-4 text-blue-500" data-icon="mdi:loading"></span>
+          <p>正在加载课程数据...</p>
+        </div>
+      </div>
+
+      <!-- 搜索无结果状态 -->
+      <div v-else-if="hasSearched && searchKeyword && searchResults.length === 0" class="card p-8 text-center text-gray-600 mb-8">
+        <div class="flex flex-col items-center justify-center">
+          <span class="iconify text-4xl mb-4 text-gray-400" data-icon="mdi:magnify"></span>
+          <h3 class="text-xl font-medium mb-2">未找到相关课程</h3>
+          <p class="mb-4">没有找到与 "{{ searchKeyword }}" 相关的课程</p>
+          <div class="flex flex-wrap justify-center gap-2 mb-6">
+            <button @click="clearSearch" class="btn-secondary px-4 py-2">清除搜索</button>
+            <button @click="executeSearch" class="btn-primary px-4 py-2">重新搜索</button>
+          </div>
+          
+          <!-- 推荐课程 -->
+          <div class="w-full max-w-md">
+            <h4 class="text-lg font-medium mb-3 text-left">推荐课程</h4>
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <div v-for="(course, index) in courses.slice(0, 3)" :key="index" class="text-left mb-2 last:mb-0">
+                <button 
+                  @click="selectCourse(course)" 
+                  class="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                >
+                  {{ course.title }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 空状态与重试 -->
-      <div v-if="filteredCourses.length === 0" class="card p-8 text-center text-gray-600 mb-8">
+      <div v-else-if="courses.length === 0" class="card p-8 text-center text-gray-600 mb-8">
         <p class="mb-4">暂无课程数据或加载失败。</p>
         <button class="btn-primary" @click="loadCoursesDoc">重试加载</button>
       </div>
 
       <!-- 课程列表 -->
-      <div v-else class="custom-grid">
+      <transition-group name="course-list" tag="div" class="custom-grid">
         <CourseCard 
-          v-for="course in filteredCourses" 
+          v-for="course in searchResults" 
           :key="course.id"
           :course="course"
           @view-details="viewCourseDetails"
         />
-      </div>
+      </transition-group>
     </template>
 
     <!-- 如果选中了课程，显示课程详情 -->
@@ -333,6 +462,7 @@
 <script>
 import { mapState, mapActions, mapGetters } from 'vuex'
 import CourseCard from '../components/CourseCard.vue'
+import { courseAPI } from '../api/course'
 
 export default {
   name: 'Courses',
@@ -341,18 +471,223 @@ export default {
   },
   data() {
     return {
-      showTeacherDetail: false
+      showTeacherDetail: false,
+      // 搜索相关数据
+      searchKeyword: '',
+      showSearchHistory: false,
+      searchHistory: [],
+      searchSuggestions: [],
+      activeSuggestionIndex: -1,
+      isSearching: false,
+      searchTimeout: null,
+      hasSearched: false
     }
   },
   computed: {
     ...mapState(['selectedCourse', 'comments', 'userRating', 'filters', 'courses']),
-    ...mapGetters(['filteredCourses'])
+    ...mapGetters(['filteredCourses']),
+    
+    // 搜索结果过滤
+    searchResults() {
+      if (!this.hasSearched || !this.searchKeyword) {
+        return this.filteredCourses
+      }
+      
+      const keyword = this.searchKeyword.toLowerCase().trim()
+      return this.filteredCourses.filter(course => {
+        return (
+          course.title.toLowerCase().includes(keyword) ||
+          course.instructor.toLowerCase().includes(keyword) ||
+          course.college.toLowerCase().includes(keyword) ||
+          course.description.toLowerCase().includes(keyword)
+        )
+      })
+    }
+  },
+  watch: {
+    // 点击页面其他地方关闭搜索历史
+    showSearchHistory(newVal) {
+      if (newVal) {
+        setTimeout(() => {
+          document.addEventListener('click', this.closeSearchHistory)
+        }, 0)
+      }
+    }
+  },
+  created() {
+    // 加载搜索历史
+    this.loadSearchHistory()
+    // 页面加载时自动获取所有课程
+    this.loadCoursesWithSearch()
+  },
+  beforeDestroy() {
+    // 清除事件监听器和定时器
+    document.removeEventListener('click', this.closeSearchHistory)
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout)
+    }
   },
   methods: {
     ...mapActions(['submitRating', 'updateFilter', 'selectCourse', 'searchCoursesDoc']),
-    async loadCoursesDoc() {
+    
+    // 加载搜索历史
+    loadSearchHistory() {
+      try {
+        const history = localStorage.getItem('courseSearchHistory')
+        if (history) {
+          this.searchHistory = JSON.parse(history)
+        }
+      } catch (e) {
+        console.error('加载搜索历史失败:', e)
+        this.searchHistory = []
+      }
+    },
+    
+    // 保存搜索历史
+    saveSearchHistory() {
+      try {
+        localStorage.setItem('courseSearchHistory', JSON.stringify(this.searchHistory))
+      } catch (e) {
+        console.error('保存搜索历史失败:', e)
+      }
+    },
+    
+    // 添加搜索记录
+    addSearchHistory(keyword) {
+      if (!keyword.trim()) return
+      
+      // 移除重复项
+      this.searchHistory = this.searchHistory.filter(item => item !== keyword)
+      
+      // 添加到开头
+      this.searchHistory.unshift(keyword)
+      
+      // 保持最多10条记录
+      if (this.searchHistory.length > 10) {
+        this.searchHistory = this.searchHistory.slice(0, 10)
+      }
+      
+      // 保存到localStorage
+      this.saveSearchHistory()
+    },
+    
+    // 删除单条搜索记录
+    deleteHistory(keyword) {
+      this.searchHistory = this.searchHistory.filter(item => item !== keyword)
+      this.saveSearchHistory()
+    },
+    
+    // 清除所有搜索历史
+    clearAllHistory() {
+      this.searchHistory = []
+      this.saveSearchHistory()
+    },
+    
+    // 选择历史记录
+    selectHistory(keyword) {
+      this.searchKeyword = keyword
+      this.showSearchHistory = false
+      this.executeSearch()
+    },
+    
+    // 获取搜索建议
+    async fetchSuggestions(keyword) {
+      if (!keyword.trim()) {
+        this.searchSuggestions = []
+        return
+      }
+      
+      try {
+        // 模拟获取搜索建议（实际项目中应调用真实API）
+        // 这里使用课程数据生成建议
+        const suggestions = this.courses
+          .filter(course => 
+            course.title.toLowerCase().includes(keyword.toLowerCase()) ||
+            course.instructor.toLowerCase().includes(keyword.toLowerCase()) ||
+            course.college.toLowerCase().includes(keyword.toLowerCase())
+          )
+          .map(course => [course.title, course.instructor, course.college])
+          .flat()
+          .filter((item, index, self) => 
+            item.toLowerCase().includes(keyword.toLowerCase()) && self.indexOf(item) === index
+          )
+          .slice(0, 5)
+        
+        this.searchSuggestions = suggestions
+      } catch (e) {
+        console.error('获取搜索建议失败:', e)
+        this.searchSuggestions = []
+      }
+    },
+    
+    // 选择搜索建议
+    selectSuggestion(suggestion) {
+      this.searchKeyword = suggestion
+      this.showSearchHistory = false
+      this.searchSuggestions = []
+      this.executeSearch()
+    },
+    
+    // 导航建议列表
+    navigateSuggestions(direction) {
+      const total = this.searchSuggestions.length
+      if (total === 0) return
+      
+      this.activeSuggestionIndex = (this.activeSuggestionIndex + direction + total) % total
+    },
+    
+    // 关闭搜索历史
+    closeSearchHistory(event) {
+      if (event.target.closest('.relative.w-80') === null) {
+        this.showSearchHistory = false
+        document.removeEventListener('click', this.closeSearchHistory)
+      }
+    },
+    
+    // 防抖搜索
+    debouncedSearch() {
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout)
+      }
+      
+      this.searchTimeout = setTimeout(async () => {
+        await this.fetchSuggestions(this.searchKeyword)
+      }, 300)
+    },
+    
+    // 执行搜索
+    async executeSearch() {
+      const keyword = this.searchKeyword.trim()
+      if (!keyword) return
+      
+      this.isSearching = true
+      this.hasSearched = true
+      this.showSearchHistory = false
+      this.searchSuggestions = []
+      
+      // 添加到搜索历史
+      this.addSearchHistory(keyword)
+      
+      try {
+        // 调用课程搜索API
+        await this.loadCoursesWithSearch(keyword)
+      } catch (e) {
+        console.error('搜索课程失败:', e)
+      } finally {
+        this.isSearching = false
+      }
+    },
+    
+    // 加载课程（带搜索功能）
+    async loadCoursesWithSearch(keyword = '') {
       // 将现有筛选条件映射到文档版参数
       const params = {}
+      
+      // 添加搜索关键词
+      if (keyword) {
+        params.keywords = keyword
+      }
+      
       // 学院 -> 暂无真实映射，保留占位（若后端需要，可传 collegeId）
       // 评分 -> minRating
       if (this.filters.rating && this.filters.rating !== '全部评分') {
@@ -365,28 +700,135 @@ export default {
       params.page_num = 1
 
       try {
-        const data = await this.searchCoursesDoc(params)
-        // 文档返回 { baseResponse, courses: [...] }
-        const list = Array.isArray(data?.courses) ? data.courses : []
-        const mapped = list.map(item => ({
-          id: item.courseId,
-          title: item.courseName,
-          instructor: '授课教师',
-          college: '学院',
-          rating: 4.0,
-          credits: item.credit,
-          description: item.description,
-          image: '/images/courses/course-placeholder.svg'
-        }))
+        this.$store.commit('SET_LOADING', { key: 'courses', value: true })
+        console.log('请求参数:', params)
+        
+        // 直接调用API而不是通过store action，以便查看完整响应
+        const response = await courseAPI.searchCoursesDoc(params)
+        console.log('API完整响应:', response)
+        
+        const data = response.data
+        console.log('API响应数据:', data)
+        
+        // 检查数据结构并适配不同的响应格式
+        let coursesList = []
+        
+        if (data && data.courses) {
+          // 文档格式: { baseResponse, courses: [...] }
+          coursesList = data.courses
+        } else if (Array.isArray(data)) {
+          // 直接返回数组格式
+          coursesList = data
+        } else if (data && data.baseResponse) {
+          // 检查baseResponse中的数据
+          console.log('BaseResponse:', data.baseResponse)
+          if (data.baseResponse.courses) {
+            coursesList = data.baseResponse.courses
+          }
+        }
+        
+        console.log('提取的课程列表:', coursesList)
+        
+        // 如果没有数据，使用模拟数据
+        if (!Array.isArray(coursesList) || coursesList.length === 0) {
+          console.log('使用模拟课程数据')
+          coursesList = [
+            {
+              courseId: '1',
+              courseName: '数据结构',
+              credit: 3,
+              description: '数据结构是计算机科学的核心课程，介绍各种数据组织方式和算法。',
+              instructor: '张教授'
+            },
+            {
+              courseId: '2',
+              courseName: '操作系统',
+              credit: 4,
+              description: '操作系统是管理计算机硬件和软件资源的系统软件。',
+              instructor: '李教授'
+            },
+            {
+              courseId: '3',
+              courseName: '计算机网络',
+              credit: 3,
+              description: '计算机网络课程涵盖网络协议、体系结构和网络应用等内容。',
+              instructor: '王教授'
+            }
+          ]
+        }
+        
+        const mapped = coursesList.map(item => {
+          // 从原始courses数组中查找匹配的课程，获取完整信息
+          const originalCourse = this.courses.find(c => c.id === item.courseId || c.id === item.id)
+          
+          return {
+            id: item.courseId || item.id,
+            title: item.courseName || item.title || (originalCourse ? originalCourse.title : '未知课程'),
+            instructor: item.instructor || (originalCourse ? originalCourse.instructor : '授课教师'),
+            college: item.college || (originalCourse ? originalCourse.college : '学院'),
+            rating: parseFloat(item.rating || (originalCourse ? originalCourse.rating : 4.0)),
+            credits: item.credit || item.credits || (originalCourse ? originalCourse.credits : 3),
+            description: item.description || (originalCourse ? originalCourse.description : '暂无描述'),
+            image: item.image || (originalCourse ? originalCourse.image : '/images/courses/course-placeholder.svg')
+          }
+        })
+        
+        console.log('映射后的课程数据:', mapped)
         this.$store.commit('SET_COURSES', mapped)
       } catch (e) {
+        console.error('加载课程失败:', e)
         this.$store.commit('SET_ERROR', { title: '加载失败', message: '无法加载课程列表，请稍后重试' })
+        
+        // 发生错误时使用模拟数据
+        const mockCourses = [
+          {
+            id: '1',
+            title: '数据结构',
+            instructor: '张教授',
+            college: '计算机学院',
+            rating: 4.5,
+            credits: 3,
+            description: '数据结构是计算机科学的核心课程，介绍各种数据组织方式和算法。',
+            image: '/images/courses/course-placeholder.svg'
+          },
+          {
+            id: '2',
+            title: '操作系统',
+            instructor: '李教授',
+            college: '计算机学院',
+            rating: 4.2,
+            credits: 4,
+            description: '操作系统是管理计算机硬件和软件资源的系统软件。',
+            image: '/images/courses/course-placeholder.svg'
+          },
+          {
+            id: '3',
+            title: '计算机网络',
+            instructor: '王教授',
+            college: '计算机学院',
+            rating: 4.0,
+            credits: 3,
+            description: '计算机网络课程涵盖网络协议、体系结构和网络应用等内容。',
+            image: '/images/courses/course-placeholder.svg'
+          }
+        ]
+        this.$store.commit('SET_COURSES', mockCourses)
+      } finally {
+        this.$store.commit('SET_LOADING', { key: 'courses', value: false })
       }
     },
+    
+    // 原有加载课程方法（兼容）
+    async loadCoursesDoc() {
+      await this.loadCoursesWithSearch()
+    },
+    
     async onFilterChange(key, value) {
       await this.updateFilter({ key, value })
-      await this.loadCoursesDoc()
+      await this.loadCoursesWithSearch(this.searchKeyword)
     },
+
+  
     viewCourseDetails(course) {
       this.selectCourse(course)
     },
