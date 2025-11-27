@@ -19,9 +19,22 @@ export const courseAPI = {
 
   // 搜索课程
   searchCourses(keyword, filters = {}) {
-    return api.get('/courses/search', {
-      params: { keyword, ...filters }
-    })
+    const params = { keyword }
+    
+    // 转换过滤器参数为API要求的格式
+    if (filters) {
+      if (filters.collegeId) params.collegeId = filters.collegeId
+      if (filters.grade) params.grade = filters.grade
+      if (filters.minRating) params.minRating = filters.minRating
+      if (filters.pageSize) params.page_size = filters.pageSize
+      if (filters.pageNum) params.page_num = filters.pageNum
+      
+      // 处理原生API参数名
+      if (filters.page_size) params.page_size = filters.page_size
+      if (filters.page_num) params.page_num = filters.page_num
+    }
+    
+    return api.get('/courses/search', { params })
   },
 
   // LearnShare1.md: 搜索课程（文档版参数名）
