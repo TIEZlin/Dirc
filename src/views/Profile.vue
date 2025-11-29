@@ -28,7 +28,7 @@
 
     <!-- 功能入口 -->
     <div class="custom-grid mb-8">
-      <div class="card p-5 text-center hover:bg-blue-50 cursor-pointer">
+      <div @click="$router.push('/profile/contributions')" class="card p-5 text-center hover:bg-blue-50 cursor-pointer transition-colors">
         <div class="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
           <span class="iconify text-2xl text-blue-700" data-icon="mdi:file-upload"></span>
         </div>
@@ -36,7 +36,7 @@
         <p class="text-sm text-gray-600">已上传{{ user.contributions }}份资源</p>
       </div>
       
-      <div class="card p-5 text-center hover:bg-blue-50 cursor-pointer">
+      <div @click="$router.push('/profile/favorites')" class="card p-5 text-center hover:bg-blue-50 cursor-pointer transition-colors">
         <div class="bg-yellow-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
           <span class="iconify text-2xl text-yellow-700" data-icon="mdi:heart"></span>
         </div>
@@ -146,3 +146,4 @@ export default {
   }
 }
 </script>
+
