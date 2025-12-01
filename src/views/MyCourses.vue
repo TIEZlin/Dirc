@@ -1,58 +1,58 @@
 <template>
   <div class="px-8 py-6">
-    <h1 class="text-3xl font-bold mb-6">我的选课</h1>
+    <h1 class="text-3xl font-bold mb-6 dark:text-white">我的选课</h1>
     
     <!-- 选课统计 -->
     <div class="grid grid-cols-4 gap-6 mb-8">
       <div class="stats-card">
         <div class="flex justify-between">
           <h3 class="text-lg font-bold">已选课程</h3>
-          <div class="bg-blue-100 rounded-md p-2">
-            <span class="iconify text-xl text-blue-700" data-icon="mdi:book-education"></span>
+          <div class="bg-blue-100 dark:bg-blue-900/30 rounded-md p-2">
+            <span class="iconify text-xl text-blue-700 dark:text-blue-400" data-icon="mdi:book-education"></span>
           </div>
         </div>
         <p class="text-3xl font-bold mt-4">{{ selectedCourses.length }}</p>
-        <p class="text-gray-500 mt-1">门课程</p>
+        <p class="text-gray-500 dark:text-gray-400 mt-1">门课程</p>
       </div>
       
       <div class="stats-card">
         <div class="flex justify-between">
           <h3 class="text-lg font-bold">总学分</h3>
-          <div class="bg-green-100 rounded-md p-2">
-            <span class="iconify text-xl text-green-700" data-icon="mdi:credit-card"></span>
+          <div class="bg-green-100 dark:bg-green-900/30 rounded-md p-2">
+            <span class="iconify text-xl text-green-700 dark:text-green-400" data-icon="mdi:credit-card"></span>
           </div>
         </div>
         <p class="text-3xl font-bold mt-4">{{ totalCredits }}</p>
-        <p class="text-gray-500 mt-1">学分</p>
+        <p class="text-gray-500 dark:text-gray-400 mt-1">学分</p>
       </div>
       
       <div class="stats-card">
         <div class="flex justify-between">
           <h3 class="text-lg font-bold">本周课程</h3>
-          <div class="bg-orange-100 rounded-md p-2">
-            <span class="iconify text-xl text-orange-700" data-icon="mdi:calendar-week"></span>
+          <div class="bg-orange-100 dark:bg-orange-900/30 rounded-md p-2">
+            <span class="iconify text-xl text-orange-700 dark:text-orange-400" data-icon="mdi:calendar-week"></span>
           </div>
         </div>
         <p class="text-3xl font-bold mt-4">{{ weeklyClasses }}</p>
-        <p class="text-gray-500 mt-1">节</p>
+        <p class="text-gray-500 dark:text-gray-400 mt-1">节</p>
       </div>
       
       <div class="stats-card">
         <div class="flex justify-between">
           <h3 class="text-lg font-bold">平均评分</h3>
-          <div class="bg-purple-100 rounded-md p-2">
-            <span class="iconify text-xl text-purple-700" data-icon="mdi:star"></span>
+          <div class="bg-purple-100 dark:bg-purple-900/30 rounded-md p-2">
+            <span class="iconify text-xl text-purple-700 dark:text-purple-400" data-icon="mdi:star"></span>
           </div>
         </div>
         <p class="text-3xl font-bold mt-4">{{ averageRating }}</p>
-        <p class="text-gray-500 mt-1">分</p>
+        <p class="text-gray-500 dark:text-gray-400 mt-1">分</p>
       </div>
     </div>
 
     <!-- 课程表 -->
     <div class="card p-6 mb-8">
       <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold">课程表</h2>
+        <h2 class="text-xl font-bold dark:text-white">课程表</h2>
         <div class="flex space-x-2">
           <button 
             class="btn-secondary"
@@ -61,7 +61,7 @@
             <span class="iconify mr-1" data-icon="mdi:chevron-left"></span>
             上一周
           </button>
-          <span class="px-4 py-2 text-sm font-medium text-gray-700">
+          <span class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
             第 {{ currentWeek }} 周
           </span>
           <button 
@@ -79,35 +79,35 @@
         <table class="w-full border-collapse">
           <thead>
             <tr>
-              <th class="border border-gray-300 p-3 text-center font-medium bg-gray-50">时间</th>
-              <th class="border border-gray-300 p-3 text-center font-medium bg-gray-50">周一</th>
-              <th class="border border-gray-300 p-3 text-center font-medium bg-gray-50">周二</th>
-              <th class="border border-gray-300 p-3 text-center font-medium bg-gray-50">周三</th>
-              <th class="border border-gray-300 p-3 text-center font-medium bg-gray-50">周四</th>
-              <th class="border border-gray-300 p-3 text-center font-medium bg-gray-50">周五</th>
-              <th class="border border-gray-300 p-3 text-center font-medium bg-gray-50">周六</th>
-              <th class="border border-gray-300 p-3 text-center font-medium bg-gray-50">周日</th>
+              <th class="border border-gray-300 dark:border-gray-600 p-3 text-center font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-300">时间</th>
+              <th class="border border-gray-300 dark:border-gray-600 p-3 text-center font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-300">周一</th>
+              <th class="border border-gray-300 dark:border-gray-600 p-3 text-center font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-300">周二</th>
+              <th class="border border-gray-300 dark:border-gray-600 p-3 text-center font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-300">周三</th>
+              <th class="border border-gray-300 dark:border-gray-600 p-3 text-center font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-300">周四</th>
+              <th class="border border-gray-300 dark:border-gray-600 p-3 text-center font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-300">周五</th>
+              <th class="border border-gray-300 dark:border-gray-600 p-3 text-center font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-300">周六</th>
+              <th class="border border-gray-300 dark:border-gray-600 p-3 text-center font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-300">周日</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="timeSlot in timeSlots" :key="timeSlot.time">
-              <td class="border border-gray-300 p-3 text-center font-medium bg-gray-50">
+              <td class="border border-gray-300 dark:border-gray-600 p-3 text-center font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
                 {{ timeSlot.time }}
               </td>
               <td 
                 v-for="day in days" 
                 :key="day"
-                class="border border-gray-300 p-2 min-w-[120px] h-20"
+                class="border border-gray-300 dark:border-gray-600 p-2 min-w-[120px] h-20"
               >
                 <div 
                   v-for="course in getCourseAtTime(day, timeSlot.time)"
                   :key="course.id"
-                  class="bg-blue-100 border border-blue-300 rounded p-2 text-xs cursor-pointer hover:bg-blue-200"
+                  class="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-800 rounded p-2 text-xs cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
                   @click="viewCourseDetail(course)"
                 >
-                  <div class="font-medium text-blue-800">{{ course.title }}</div>
-                  <div class="text-blue-600">{{ course.instructor }}</div>
-                  <div class="text-blue-500">{{ course.location }}</div>
+                  <div class="font-medium text-blue-800 dark:text-blue-300">{{ course.title }}</div>
+                  <div class="text-blue-600 dark:text-blue-400">{{ course.instructor }}</div>
+                  <div class="text-blue-500 dark:text-blue-500">{{ course.location }}</div>
                 </div>
               </td>
             </tr>
@@ -118,15 +118,15 @@
 
     <!-- 已选课程列表 -->
     <div class="card p-6">
-      <h2 class="text-xl font-bold mb-4">已选课程列表</h2>
+      <h2 class="text-xl font-bold mb-4 dark:text-white">已选课程列表</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div 
           v-for="course in selectedCourses" 
           :key="course.id"
-          class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+          class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-all duration-300 dark:bg-gray-800"
         >
           <div class="flex items-start justify-between mb-3">
-            <h3 class="font-bold text-lg">{{ course.title }}</h3>
+            <h3 class="font-bold text-lg dark:text-white">{{ course.title }}</h3>
             <button 
               class="text-red-500 hover:text-red-700"
               @click="dropCourse(course.id)"
@@ -134,9 +134,9 @@
               <span class="iconify" data-icon="mdi:close"></span>
             </button>
           </div>
-          <p class="text-sm text-gray-600 mb-2">{{ course.instructor }} · {{ course.college }}</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">{{ course.instructor }} · {{ course.college }}</p>
           <div class="flex justify-between items-center mb-3">
-            <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ course.credits }}学分</span>
+            <span class="text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-1 rounded">{{ course.credits }}学分</span>
             <div class="star-rating flex">
               <span 
                 v-for="star in 5" 
@@ -145,12 +145,12 @@
                 :class="{ active: star <= Math.floor(course.rating) }"
                 data-icon="mdi:star"
               ></span>
-              <span class="ml-1 text-sm text-gray-600">{{ course.rating }}</span>
+              <span class="ml-1 text-sm text-gray-600 dark:text-gray-400">{{ course.rating }}</span>
             </div>
           </div>
-          <div class="text-sm text-gray-500 mb-3">
+          <div class="text-sm text-gray-500 dark:text-gray-400 mb-3">
             <div v-for="schedule in course.schedule" :key="schedule.day">
-              {{ getDayName(schedule.day) }} {{ schedule.time }} {{ schedule.location }}
+              {{ getDayName(schedule.day) }} {{ getTimeString(schedule.timeSlot) }} {{ schedule.location }}
             </div>
           </div>
           <button 
@@ -184,53 +184,16 @@ export default {
     }
   },
   computed: {
-    ...mapState(['courses']),
+    ...mapState(['courses', 'myCourses']),
     ...mapGetters(['currentUser']),
     selectedCourses() {
-      // 模拟已选课程数据
-      return [
-        {
-          id: 1,
-          title: '计算机科学导论',
-          instructor: '张教授',
-          college: '计算机学院',
-          rating: 4.2,
-          credits: 3,
-          schedule: [
-            { day: 'monday', time: '08:00-09:40', location: 'A101' },
-            { day: 'wednesday', time: '08:00-09:40', location: 'A101' }
-          ]
-        },
-        {
-          id: 2,
-          title: '数据结构与算法',
-          instructor: '李教授',
-          college: '计算机学院',
-          rating: 4.7,
-          credits: 4,
-          schedule: [
-            { day: 'tuesday', time: '10:00-11:40', location: 'B201' },
-            { day: 'thursday', time: '10:00-11:40', location: 'B201' }
-          ]
-        },
-        {
-          id: 3,
-          title: '宏观经济学',
-          instructor: '王教授',
-          college: '经济学院',
-          rating: 3.5,
-          credits: 2,
-          schedule: [
-            { day: 'friday', time: '14:00-15:40', location: 'C301' }
-          ]
-        }
-      ]
+      return this.myCourses
     },
     totalCredits() {
       return this.selectedCourses.reduce((total, course) => total + course.credits, 0)
     },
     weeklyClasses() {
-      return this.selectedCourses.reduce((total, course) => total + course.schedule.length, 0)
+      return this.selectedCourses.reduce((total, course) => total + (course.schedule ? course.schedule.length : 0), 0)
     },
     averageRating() {
       if (this.selectedCourses.length === 0) return 0
@@ -240,11 +203,18 @@ export default {
   },
   methods: {
     getCourseAtTime(day, time) {
+      // 找到对应时间段的索引
+      const timeSlotIndex = this.timeSlots.findIndex(slot => slot.time === time)
+      if (timeSlotIndex === -1) return []
+
       return this.selectedCourses.filter(course => 
-        course.schedule.some(schedule => 
-          schedule.day === day && schedule.time === time
+        course.schedule && course.schedule.some(schedule => 
+          schedule.day === day && schedule.timeSlot === timeSlotIndex
         )
       )
+    },
+    getTimeString(index) {
+      return this.timeSlots[index] ? this.timeSlots[index].time : ''
     },
     getDayName(day) {
       const dayNames = {
@@ -262,11 +232,14 @@ export default {
       this.$store.commit('SET_SELECTED_COURSE', course)
       this.$router.push('/courses')
     },
-    dropCourse(courseId) {
+    async dropCourse(courseId) {
       if (confirm('确定要退选这门课程吗？')) {
-        // 这里应该调用退选API
-        console.log('退选课程:', courseId)
-        alert('退选成功！')
+        try {
+          await this.$store.dispatch('dropCourse', courseId)
+          // alert('退选成功！') // 既然界面会响应式更新，就不必弹窗了，或者可以用toast
+        } catch (error) {
+          alert(error.message)
+        }
       }
     },
     previousWeek() {
@@ -282,3 +255,5 @@ export default {
   }
 }
 </script>
+
+

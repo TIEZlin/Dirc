@@ -7,6 +7,50 @@ import { adminAPI } from '../api/admin'
 
 Vue.use(Vuex)
 
+const formatTimestamp = (value) => {
+  if (value === undefined || value === null) return ''
+  const numeric = Number(value)
+  if (Number.isNaN(numeric)) return ''
+  const milliseconds = numeric < 100000000000 ? numeric * 1000 : numeric
+  return new Date(milliseconds).toLocaleString()
+}
+
+const buildReviewRecord = (item = {}, label = '目标') => {
+  const reviewId = item.reviewId || item.id || item.targetId || Date.now()
+  const targetId = item.targetId ?? ''
+  const title = item.targetName || `${label}${targetId ? ` #${targetId}` : ''}`
+  return {
+    id: reviewId,
+    title,
+    targetId,
+    targetType: item.targetType || '',
+    reason: item.reason || '—',
+    status: item.status || 'pending',
+    priority: item.priority ?? null,
+    reporter: item.reporterId ? `用户${item.reporterId}` : '系统',
+    createdAt: formatTimestamp(item.createdAt),
+    raw: item
+  }
+}
+
+const mapReviewList = (list = [], label = '目标') => {
+  if (!Array.isArray(list)) return []
+  return list.map((item) => buildReviewRecord(item, label))
+}
+
+const extractList = (payload, candidates = []) => {
+  if (Array.isArray(payload)) return payload
+  if (!payload || typeof payload !== 'object') return []
+  for (const key of candidates) {
+    if (Array.isArray(payload[key])) return payload[key]
+  }
+  if (Array.isArray(payload.data)) return payload.data
+  if (Array.isArray(payload.items)) return payload.items
+  return []
+}
+
+const defaultAdminPaging = { page_size: 10, page_num: 1 }
+
 export default new Vuex.Store({
   state: {
     // 认证状态
@@ -31,7 +75,107 @@ export default new Vuex.Store({
     },
     
     // 课程数据（与后端对接后，初始为空）
-    courses: [],
+    courses: [
+      {
+        id: 1,
+        title: '计算机科学导论',
+        instructor: '张教授',
+        college: '计算机学院',
+        rating: 4.2,
+        credits: 3,
+        description: '计算机科学的基础入门课程',
+        schedule: [
+          { day: 'monday', timeSlot: 0, location: 'A101' }, // 08:20-10:00
+          { day: 'wednesday', timeSlot: 0, location: 'A101' }
+        ]
+      },
+      {
+        id: 2,
+        title: '数据结构与算法',
+        instructor: '李教授',
+        college: '计算机学院',
+        rating: 4.7,
+        credits: 4,
+        description: '核心必修课，深入讲解数据结构',
+        schedule: [
+          { day: 'tuesday', timeSlot: 1, location: 'B201' }, // 10:20-12:00
+          { day: 'thursday', timeSlot: 1, location: 'B201' }
+        ]
+      },
+      {
+        id: 3,
+        title: '宏观经济学',
+        instructor: '王教授',
+        college: '经济学院',
+        rating: 3.5,
+        credits: 2,
+        description: '经济学基础',
+        schedule: [
+          { day: 'friday', timeSlot: 2, location: 'C301' } // 14:00-15:40
+        ]
+      },
+      {
+        id: 4,
+        title: 'Web前端开发',
+        instructor: '赵老师',
+        college: '计算机学院',
+        rating: 4.8,
+        credits: 3,
+        description: '学习Vue, React等现代前端技术',
+        schedule: [
+           { day: 'monday', timeSlot: 0, location: 'D401' } // Conflict with Course 1
+        ]
+      },
+      {
+        id: 5,
+        title: '操作系统',
+        instructor: '钱教授',
+        college: '计算机学院',
+        rating: 4.5,
+        credits: 4,
+        description: '操作系统原理与实践',
+        schedule: [
+           { day: 'wednesday', timeSlot: 3, location: 'A102' } // 15:50-17:30
+        ]
+      },
+      {
+        id: 6,
+        title: '人工智能导论',
+        instructor: '孙教授',
+        college: '计算机学院',
+        rating: 4.9,
+        credits: 3,
+        description: '探索AI的奥秘',
+        schedule: [
+           { day: 'tuesday', timeSlot: 2, location: 'E501' } // 14:00-15:40
+        ]
+      },
+      {
+        id: 7,
+        title: '高等数学',
+        instructor: '周教授',
+        college: '数学学院',
+        rating: 4.0,
+        credits: 5,
+        description: '理工科必修基础课',
+        schedule: [
+           { day: 'monday', timeSlot: 1, location: 'F601' }, // 10:20-12:00
+           { day: 'wednesday', timeSlot: 1, location: 'F601' }
+        ]
+      },
+      {
+        id: 8,
+        title: '大学英语',
+        instructor: '吴老师',
+        college: '外国语学院',
+        rating: 4.3,
+        credits: 2,
+        description: '提高英语综合应用能力',
+        schedule: [
+           { day: 'thursday', timeSlot: 0, location: 'G701' } // 08:20-10:00
+        ]
+      }
+    ],
     
     // 资源数据（与后端对接后，初始为空）
     resources: [],
@@ -85,6 +229,9 @@ export default new Vuex.Store({
         date: '2023-12-12 09:45'
       }
     ],
+    pendingCourseReviews: [],
+    pendingCourseCommentReviews: [],
+    pendingResourceCommentReviews: [],
     
     // 用户列表
     users: [
@@ -131,6 +278,8 @@ export default new Vuex.Store({
       notifications: false,
       notificationsUnread: false
     },
+    adminPermissions: [],
+    adminRoles: [],
 
     // 错误状态
     error: null
@@ -268,6 +417,14 @@ export default new Vuex.Store({
       state.myCourses = courses
     },
 
+    ADD_MY_COURSE(state, course) {
+      state.myCourses.push(course)
+    },
+
+    REMOVE_MY_COURSE(state, courseId) {
+      state.myCourses = state.myCourses.filter(c => c.id !== courseId)
+    },
+
     // 资源相关
     SET_RESOURCES(state, resources) {
       state.resources = resources
@@ -285,10 +442,28 @@ export default new Vuex.Store({
     SET_PENDING_RESOURCES(state, resources) {
       state.pendingResources = resources
     },
+    SET_PENDING_COURSE_REVIEWS(state, reviews) {
+      state.pendingCourseReviews = reviews
+    },
+    SET_PENDING_COURSE_COMMENT_REVIEWS(state, reviews) {
+      state.pendingCourseCommentReviews = reviews
+    },
+    SET_PENDING_RESOURCE_COMMENT_REVIEWS(state, reviews) {
+      state.pendingResourceCommentReviews = reviews
+    },
 
     SET_STATISTICS(state, statistics) {
       state.statistics = statistics
     },
+    SET_ADMIN_PERMISSIONS(state, permissions) {
+      state.adminPermissions = permissions || []
+    },
+    SET_ADMIN_ROLES(state, roles) {
+      state.adminRoles = roles || []
+    },
+
+    // 选课相关 - 这些应该是 actions，不小心放到了 mutations，现已移除
+
 
     // 加载状态
     SET_LOADING(state, { key, value }) {
@@ -1040,23 +1215,60 @@ async login({ commit }, credentials) {
       }
     },
 
-    async fetchMyCourses({ commit }) {
+    // 选课动作
+    async enrollCourse({ commit, state, dispatch }, courseId) {
+      // 1. Find the course
+      const course = state.courses.find(c => c.id === courseId)
+      if (!course) {
+        throw new Error('课程不存在')
+      }
+
+      // 2. Check if already enrolled
+      const isEnrolled = state.myCourses.some(c => c.id === courseId)
+      if (isEnrolled) {
+        throw new Error('您已选修该课程')
+      }
+
+      // 3. Check for time conflicts
+      if (course.schedule && course.schedule.length > 0) {
+        for (const newSlot of course.schedule) {
+          for (const myCourse of state.myCourses) {
+            if (myCourse.schedule && myCourse.schedule.length > 0) {
+              for (const mySlot of myCourse.schedule) {
+                if (newSlot.day === mySlot.day && newSlot.timeSlot === mySlot.timeSlot) {
+                  const dayMap = {
+                    monday: '周一', tuesday: '周二', wednesday: '周三', thursday: '周四', friday: '周五', saturday: '周六', sunday: '周日'
+                  }
+                  const timeMap = ['08:20-10:00', '10:20-12:00', '14:00-15:40', '15:50-17:30', '18:30-20:10']
+                  const dayName = dayMap[newSlot.day] || newSlot.day
+                  const timeString = timeMap[newSlot.timeSlot] || `第${newSlot.timeSlot + 1}节`
+                  throw new Error(`与已选课程 "${myCourse.title}" 时间冲突 (${dayName} ${timeString})`)
+                }
+              }
+            }
+          }
+        }
+      }
+
       try {
-        const response = await courseAPI.getMyCourses()
-        commit('SET_MY_COURSES', response.data)
-        return response.data
+        // 4. Try API
+        await courseAPI.enrollCourse(courseId)
+        // 重新获取我的课程列表
+        await dispatch('fetchMyCourses')
       } catch (error) {
-        throw error
+        console.warn('API enrollment failed, falling back to local state:', error)
+        // Fallback for demo/mock purposes: update local state directly
+        commit('ADD_MY_COURSE', course)
       }
     },
 
-    async enrollCourse({ commit }, courseId) {
+    async dropCourse({ commit, dispatch }, courseId) {
       try {
-        await courseAPI.enrollCourse(courseId)
-        // 重新获取我的课程列表
-        await this.dispatch('fetchMyCourses')
+        await courseAPI.dropCourse(courseId)
+        await dispatch('fetchMyCourses')
       } catch (error) {
-        throw error
+         console.warn('API drop course failed, falling back to local state:', error)
+         commit('REMOVE_MY_COURSE', courseId)
       }
     },
 
@@ -1199,28 +1411,259 @@ async login({ commit }, credentials) {
     async fetchUsers({ commit }, params = {}) {
       try {
         const response = await adminAPI.getUsers(params)
-        commit('SET_USERS', response.data)
-        return response.data
+        const data = response?.data
+        const list = Array.isArray(data?.users) ? data.users : (Array.isArray(data) ? data : [])
+        commit('SET_USERS', list.length ? list : data)
+        return data
       } catch (error) {
         throw error
       }
     },
 
-    async fetchPendingResources({ commit }, params = {}) {
+    async createAdminUser({ dispatch }, payload) {
       try {
-        const response = await adminAPI.getPendingResources(params)
-        commit('SET_PENDING_RESOURCES', response.data)
-        return response.data
+        await adminAPI.createUser(payload)
+        await dispatch('fetchUsers')
       } catch (error) {
         throw error
       }
     },
 
-    async reviewResource({ commit }, { resourceId, action, comment }) {
+    async updateAdminUser({ dispatch }, payload) {
       try {
-        await adminAPI.reviewResource(resourceId, action, comment)
-        // 重新获取待审核资源列表
-        await this.dispatch('fetchPendingResources')
+        await adminAPI.updateUser(payload)
+        await dispatch('fetchUsers')
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async createCollege(_, data) {
+      try {
+        return await adminAPI.createCollege(data)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async createMajor(_, data) {
+      try {
+        return await adminAPI.createMajor(data)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async createTeacher(_, data) {
+      try {
+        const formData = data instanceof FormData ? data : new FormData()
+        if (!(data instanceof FormData)) {
+          formData.append('teacher_name', data.teacher_name || '')
+          formData.append('college_id', data.college_id || '')
+          formData.append('introduction', data.introduction || '')
+          formData.append('email', data.email || '')
+          if (data.avatar) {
+            formData.append('avatar', data.avatar)
+          }
+        }
+        return await adminAPI.createTeacher(formData)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async fetchResourceReviewList({ commit }, params = {}) {
+      try {
+        const response = await adminAPI.getResourceReviewList({ ...defaultAdminPaging, ...(params || {}) })
+        const list = extractList(response?.data, ['resource_review_list', 'resourceReviewList'])
+        const normalized = mapReviewList(list, '资源')
+        commit('SET_PENDING_RESOURCES', normalized)
+        return normalized
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async fetchCourseReviewList({ commit }, params = {}) {
+      try {
+        const response = await adminAPI.getCourseReviewList({ ...defaultAdminPaging, ...(params || {}) })
+        const list = extractList(response?.data, ['course_review_list', 'review_list'])
+        const normalized = mapReviewList(list, '课程')
+        commit('SET_PENDING_COURSE_REVIEWS', normalized)
+        return normalized
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async fetchCourseCommentReviewList({ commit }, params = {}) {
+      try {
+        const response = await adminAPI.getCourseCommentReviewList({ ...defaultAdminPaging, ...(params || {}) })
+        const list = extractList(response?.data, ['comment_audit_list', 'course_comment_review_list'])
+        const normalized = mapReviewList(list, '课程评论')
+        commit('SET_PENDING_COURSE_COMMENT_REVIEWS', normalized)
+        return normalized
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async fetchResourceCommentReviewList({ commit }, params = {}) {
+      try {
+        const response = await adminAPI.getResourceCommentReviewList({ ...defaultAdminPaging, ...(params || {}) })
+        const list = extractList(response?.data, ['comment_audit_list', 'resource_comment_review_list'])
+        const normalized = mapReviewList(list, '资源评论')
+        commit('SET_PENDING_RESOURCE_COMMENT_REVIEWS', normalized)
+        return normalized
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async processResourceReview({ dispatch }, { reviewId, action }) {
+      try {
+        await adminAPI.processResourceReview(reviewId, action)
+        await dispatch('fetchResourceReviewList')
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async processCourseReview({ dispatch }, { reviewId, action }) {
+      try {
+        await adminAPI.processCourseReview(reviewId, action)
+        await dispatch('fetchCourseReviewList')
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async processCourseCommentReview({ dispatch }, { reviewId, action }) {
+      try {
+        await adminAPI.processCourseCommentReview(reviewId, action)
+        await dispatch('fetchCourseCommentReviewList')
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async processResourceCommentReview({ dispatch }, { reviewId, action }) {
+      try {
+        await adminAPI.processResourceCommentReview(reviewId, action)
+        await dispatch('fetchResourceCommentReviewList')
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async fetchPermissions({ commit }, params = {}) {
+      try {
+        const response = await adminAPI.getPermissions(params)
+        const list = extractList(response?.data, ['permissions'])
+        commit('SET_ADMIN_PERMISSIONS', list)
+        return list
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async fetchRoles({ commit }, params = {}) {
+      try {
+        const response = await adminAPI.getRoles(params)
+        const list = extractList(response?.data, ['roles'])
+        commit('SET_ADMIN_ROLES', list)
+        return list
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async createRole({ dispatch }, payload) {
+      try {
+        await adminAPI.createRole(payload)
+        await dispatch('fetchRoles')
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async deleteAdminCourse(_, courseId) {
+      try {
+        return await adminAPI.deleteCourse(courseId)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async deleteAdminResource(_, resourceId) {
+      try {
+        return await adminAPI.deleteResource(resourceId)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async deleteAdminResourceComment(_, commentId) {
+      try {
+        return await adminAPI.deleteResourceComment(commentId)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async deleteAdminCourseComment(_, commentId) {
+      try {
+        return await adminAPI.deleteCourseComment(commentId)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async deleteAdminResourceRating(_, ratingId) {
+      try {
+        return await adminAPI.deleteResourceRating(ratingId)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async deleteAdminCourseRating(_, ratingId) {
+      try {
+        return await adminAPI.deleteCourseRating(ratingId)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async createShopProduct(_, payload) {
+      try {
+        return await adminAPI.createShopProduct(payload)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async deleteShopProducts(_, ids) {
+      try {
+        return await adminAPI.deleteShopProducts(ids)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async deleteShopCategory(_, id) {
+      try {
+        return await adminAPI.deleteShopCategory(id)
+      } catch (error) {
+        throw error
+      }
+    },
+
+    async updateShopInventory(_, payload) {
+      try {
+        const { id, ...rest } = payload || {}
+        if (!id) throw new Error('缺少商品ID')
+        return await adminAPI.updateInventory(id, rest)
       } catch (error) {
         throw error
       }
@@ -1234,8 +1677,7 @@ async login({ commit }, credentials) {
       } catch (error) {
         throw error
       }
-    }
-    ,
+    },
     // 通知相关
     async fetchNotifications({ commit }, params = {}) {
       try {
@@ -1394,6 +1836,11 @@ async login({ commit }, credentials) {
     unreadNotificationsCount: (state) => state.unreadNotificationsCount
   }
 })
+
+
+
+
+
 
 
 

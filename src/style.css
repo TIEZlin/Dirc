@@ -9,14 +9,14 @@
 .app-container {
   width: 100%;
   margin: 0 auto;
-  background-color: #F8F9FA;
+  @apply bg-gray-50 dark:bg-gray-900 transition-colors duration-300;
 }
 
 .card {
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   transition: all 0.2s ease;
-  background: white;
+  @apply bg-white dark:bg-gray-800 dark:text-gray-200 dark:border dark:border-gray-700;
 }
 
 .card:hover {
@@ -26,7 +26,7 @@
 
 /* 已有卡片与按钮等样式 */
 .star-rating .star {
-  color: #E5E7EB;
+  @apply text-gray-200 dark:text-gray-600;
   cursor: pointer;
 }
 
@@ -36,7 +36,7 @@
 
 /* 新增：字符星星的颜色与交互（点击后的黄色高亮） */
 .star-rating .star-char {
-  color: #E5E7EB;
+  @apply text-gray-200 dark:text-gray-600;
   cursor: pointer;
   user-select: none;
   transition: color 0.2s ease;
@@ -47,7 +47,7 @@
 }
 
 .star-rating .star-char.inactive {
-  color: #E5E7EB;
+  @apply text-gray-200 dark:text-gray-600;
 }
 
 .star-rating .star-char:hover {
@@ -70,22 +70,21 @@
 
 .btn-secondary {
   border: 1px solid #2C5AA0;
-  color: #2C5AA0;
+  @apply text-blue-700 dark:text-blue-400 border-blue-700 dark:border-blue-400 bg-white dark:bg-gray-800;
   border-radius: 4px;
   padding: 8px 16px;
   transition: all 0.2s;
   cursor: pointer;
-  background: white;
 }
 
 .btn-secondary:hover {
-  background-color: #e8efff;
+  @apply bg-blue-50 dark:bg-gray-700;
 }
 
 .progress-bar {
   height: 8px;
   border-radius: 4px;
-  background-color: #E5E7EB;
+  @apply bg-gray-200 dark:bg-gray-700;
 }
 
 .progress-value {
@@ -115,6 +114,7 @@
   border-radius: 8px;
   background: white;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  @apply dark:bg-gray-800 dark:text-white transition-colors duration-300;
 }
 
 .nav-link:hover {
@@ -168,6 +168,9 @@
     transform: translateX(-50%);
   }
 }
+
+
+
 
 
 

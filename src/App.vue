@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container min-h-screen flex flex-col">
+  <div class="app-container min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
     <NavBar v-if="$route.path !== '/login'" />
     <main class="flex-grow">
       <router-view />
