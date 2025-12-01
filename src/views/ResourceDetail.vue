@@ -1,5 +1,16 @@
 <template>
   <div class="px-8 py-6" v-if="selectedResource">
+    <!-- 返回资源广场按钮 -->
+    <div class="mb-4">
+      <button 
+        @click="$router.push('/resources')"
+        class="btn-secondary flex items-center mb-4"
+      >
+        <span class="iconify mr-2" data-icon="mdi:arrow-left"></span>
+        返回资源广场
+      </button>
+    </div>
+    
     <div class="grid grid-cols-3 gap-8">
       <!-- 左侧资源信息 -->
       <div class="col-span-1">
@@ -280,6 +291,35 @@ export default {
     }
   },
   watch: {
+    '$route.query.id': {
+      immediate: true,
+      async handler(newId) {
+        if (newId) {
+          // 1. 尝试从 store 已有的列表中查找
+          let resource = this.$store.state.resources.find(r => r.id == newId)
+          
+          // 2. 如果没找到，尝试从 API 获取详情
+          if (!resource) {
+            try {
+              // 尝试调用 fetchResourceById action
+              const res = await this.$store.dispatch('fetchResourceById', newId)
+              // 适配后端返回的数据结构，假设返回的是资源对象
+              // 如果后端返回结构不同（比如包裹在 data 属性中），需要在这里处理
+              if (res) {
+                 resource = res.data || res
+              }
+            } catch (e) {
+              console.warn('无法获取资源详情:', e)
+            }
+          }
+
+          // 3. 设置选中资源
+          if (resource) {
+             this.$store.commit('SET_SELECTED_RESOURCE', resource)
+          }
+        }
+      }
+    },
     selectedResource: {
       immediate: true,
       async handler(res) {
@@ -302,6 +342,9 @@ export default {
     }
   },
   async created() {
+    // 如果 URL 中指定了 ID，交给 watch 处理，这里不默认选中
+    if (this.$route.query.id) return;
+
     // 若未选择资源，默认选第一条
     if (!this.selectedResource && this.$store.state.resources?.length > 0) {
       this.$store.commit('SET_SELECTED_RESOURCE', this.$store.state.resources[0])

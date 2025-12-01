@@ -1,4 +1,5 @@
 import api from './index'
+import { findLocalUserByIdentity } from './mockUsers'
 
 /**
  * 认证相关API接口

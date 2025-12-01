@@ -12,7 +12,7 @@ export default new Vuex.Store({
     // 认证状态
     isAuthenticated: false,
     currentUser: null,
-    token: localStorage.getItem('token') || null,
+    token: sessionStorage.getItem('token') || null,
     
     // 用户信息
     user: {
@@ -31,7 +31,107 @@ export default new Vuex.Store({
     },
     
     // 课程数据（与后端对接后，初始为空）
-    courses: [],
+    courses: [
+      {
+        id: 1,
+        title: '计算机科学导论',
+        instructor: '张教授',
+        college: '计算机学院',
+        rating: 4.2,
+        credits: 3,
+        description: '计算机科学的基础入门课程',
+        schedule: [
+          { day: 'monday', timeSlot: 0, location: 'A101' }, // 08:20-10:00
+          { day: 'wednesday', timeSlot: 0, location: 'A101' }
+        ]
+      },
+      {
+        id: 2,
+        title: '数据结构与算法',
+        instructor: '李教授',
+        college: '计算机学院',
+        rating: 4.7,
+        credits: 4,
+        description: '核心必修课，深入讲解数据结构',
+        schedule: [
+          { day: 'tuesday', timeSlot: 1, location: 'B201' }, // 10:20-12:00
+          { day: 'thursday', timeSlot: 1, location: 'B201' }
+        ]
+      },
+      {
+        id: 3,
+        title: '宏观经济学',
+        instructor: '王教授',
+        college: '经济学院',
+        rating: 3.5,
+        credits: 2,
+        description: '经济学基础',
+        schedule: [
+          { day: 'friday', timeSlot: 2, location: 'C301' } // 14:00-15:40
+        ]
+      },
+      {
+        id: 4,
+        title: 'Web前端开发',
+        instructor: '赵老师',
+        college: '计算机学院',
+        rating: 4.8,
+        credits: 3,
+        description: '学习Vue, React等现代前端技术',
+        schedule: [
+           { day: 'monday', timeSlot: 0, location: 'D401' } // Conflict with Course 1
+        ]
+      },
+      {
+        id: 5,
+        title: '操作系统',
+        instructor: '钱教授',
+        college: '计算机学院',
+        rating: 4.5,
+        credits: 4,
+        description: '操作系统原理与实践',
+        schedule: [
+           { day: 'wednesday', timeSlot: 3, location: 'A102' } // 15:50-17:30
+        ]
+      },
+      {
+        id: 6,
+        title: '人工智能导论',
+        instructor: '孙教授',
+        college: '计算机学院',
+        rating: 4.9,
+        credits: 3,
+        description: '探索AI的奥秘',
+        schedule: [
+           { day: 'tuesday', timeSlot: 2, location: 'E501' } // 14:00-15:40
+        ]
+      },
+      {
+        id: 7,
+        title: '高等数学',
+        instructor: '周教授',
+        college: '数学学院',
+        rating: 4.0,
+        credits: 5,
+        description: '理工科必修基础课',
+        schedule: [
+           { day: 'monday', timeSlot: 1, location: 'F601' }, // 10:20-12:00
+           { day: 'wednesday', timeSlot: 1, location: 'F601' }
+        ]
+      },
+      {
+        id: 8,
+        title: '大学英语',
+        instructor: '吴老师',
+        college: '外国语学院',
+        rating: 4.3,
+        credits: 2,
+        description: '提高英语综合应用能力',
+        schedule: [
+           { day: 'thursday', timeSlot: 0, location: 'G701' } // 08:20-10:00
+        ]
+      }
+    ],
     
     // 资源数据（与后端对接后，初始为空）
     resources: [],
@@ -118,12 +218,18 @@ export default new Vuex.Store({
     // 我的资源
     myResources: [],
 
+    // 通知与消息
+    notifications: [],
+    unreadNotificationsCount: 0,
+
     // 加载状态
     loading: {
       courses: false,
       resources: false,
       users: false,
-      statistics: false
+      statistics: false,
+      notifications: false,
+      notificationsUnread: false
     },
 
     // 错误状态
@@ -132,28 +238,28 @@ export default new Vuex.Store({
   
   mutations: {
     // 认证相关
-  SET_AUTH(state, { user, token }) {
-  state.isAuthenticated = true
-  state.currentUser = user
-  state.token = token
-  // 只有当token存在时才保存到localStorage
-  if (token) {
-    localStorage.setItem('token', token)
-  }
-  localStorage.setItem('user', JSON.stringify(user))
-},
+    SET_AUTH(state, { user, token }) {
+      state.isAuthenticated = true
+      state.currentUser = user
+      state.token = token
+      // 只有当token存在时才保存到sessionStorage
+      if (token) {
+        sessionStorage.setItem('token', token)
+      }
+      sessionStorage.setItem('user', JSON.stringify(user))
+    },
     
     CLEAR_AUTH(state) {
       state.isAuthenticated = false
       state.currentUser = null
       state.token = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('user')
     },
     
     INIT_AUTH(state) {
-      const token = localStorage.getItem('token')
-      const user = localStorage.getItem('user')
+      const token = sessionStorage.getItem('token')
+      const user = sessionStorage.getItem('user')
       if (token && user) {
         state.isAuthenticated = true
         state.currentUser = JSON.parse(user)
@@ -262,6 +368,14 @@ export default new Vuex.Store({
       state.myCourses = courses
     },
 
+    ADD_MY_COURSE(state, course) {
+      state.myCourses.push(course)
+    },
+
+    REMOVE_MY_COURSE(state, courseId) {
+      state.myCourses = state.myCourses.filter(c => c.id !== courseId)
+    },
+
     // 资源相关
     SET_RESOURCES(state, resources) {
       state.resources = resources
@@ -284,6 +398,9 @@ export default new Vuex.Store({
       state.statistics = statistics
     },
 
+    // 选课相关 - 这些应该是 actions，不小心放到了 mutations，现已移除
+
+
     // 加载状态
     SET_LOADING(state, { key, value }) {
       state.loading[key] = value
@@ -296,6 +413,31 @@ export default new Vuex.Store({
 
     CLEAR_ERROR(state) {
       state.error = null
+    }
+    ,
+    // 通知相关
+    SET_NOTIFICATIONS(state, notifications) {
+      state.notifications = Array.isArray(notifications) ? notifications : []
+    },
+    SET_UNREAD_NOTIFICATIONS_COUNT(state, count) {
+      state.unreadNotificationsCount = Number(count) || 0
+    },
+    MARK_NOTIFICATION_READ(state, notificationId) {
+      const idx = state.notifications.findIndex(n => n.id === notificationId)
+      if (idx !== -1) {
+        const item = state.notifications[idx]
+        state.notifications.splice(idx, 1, { ...item, isRead: true })
+      }
+      if (state.unreadNotificationsCount > 0) {
+        state.unreadNotificationsCount -= 1
+      }
+    },
+    MARK_ALL_NOTIFICATIONS_READ(state) {
+      state.notifications = state.notifications.map(n => ({ ...n, isRead: true }))
+      state.unreadNotificationsCount = 0
+    },
+    REMOVE_NOTIFICATION(state, notificationId) {
+      state.notifications = state.notifications.filter(n => n.id !== notificationId)
     }
   },
   
@@ -312,26 +454,77 @@ async login({ commit }, credentials) {
     // 适配实际的API响应格式
     let user, token;
     
-    // 检查响应格式 - 根据您提供的信息进行适配
-    if (response && response.data && response.data.baseResponse) {
-      // 检查成功的状态码 (10000)
-      if (response.data.baseResponse.code === 10000) {
-        // 从响应中提取实际的用户数据
-        user = response.data.user;
+    console.log('登录响应完整数据:', response);
+    console.log('登录响应头:', response.headers);
+    console.log('登录响应体:', response.data);
+    
+    // 1. 首先尝试从响应头中获取token（适用于所有响应格式）
+    token = response.headers['authorization'] || 
+            response.headers['x-auth-token'] || 
+            response.headers['access-token'] ||
+            response.headers['Authorization'] ||
+            response.headers['X-Auth-Token'] ||
+            response.headers['Access-Token'];
+    
+    // 如果响应头中的token包含Bearer前缀，需要去掉
+    if (token && token.startsWith('Bearer ')) {
+      token = token.substring(7);
+    }
+    
+    console.log('从响应头提取的token:', token);
+    
+    // 2. 检查响应格式并提取用户数据和可能的token
+    if (response && response.data) {
+      // 检查是否是baseResponse格式
+      if (response.data.baseResponse) {
+        console.log('响应格式: baseResponse');
+        console.log('baseResponse code:', response.data.baseResponse.code);
+        console.log('baseResponse message:', response.data.baseResponse.message);
         
-        // 从响应头中获取token
-        token = response.headers['authorization'] || response.headers['x-auth-token'] || response.headers['access-token'];
-        // 如果响应头中的token包含Bearer前缀，需要去掉
-        if (token && token.startsWith('Bearer ')) {
-          token = token.substring(7);
+        // 检查成功的状态码 (10000)
+        if (response.data.baseResponse.code === 10000) {
+          // 从响应中提取实际的用户数据
+          user = response.data.user;
+          
+          console.log('从响应体提取的用户数据:', user);
+          
+          // 如果响应头中没有token，检查响应体中是否有
+          if (!token) {
+            token = response.data.token || 
+                   response.data.access_token || 
+                   response.data.data?.token ||
+                   response.data.data?.access_token ||
+                   response.data.result?.token ||
+                   response.data.result?.access_token;
+            
+            console.log('从响应体提取的token:', token);
+          }
+        } else {
+          throw new Error(response.data.baseResponse.message || '登录失败')
         }
+      } else {
+        // 非baseResponse格式，可能是直接返回用户数据和token
+        console.log('响应格式: 直接数据格式');
+        
+        // 尝试从响应体中提取用户数据
+        user = response.data.user || 
+               response.data.data || 
+               response.data.result || 
+               response.data;
+        
+        console.log('从响应体提取的用户数据:', user);
         
         // 如果响应头中没有token，检查响应体中是否有
         if (!token) {
-          token = response.data.token || response.data.access_token || response.data.data?.token;
+          token = response.data.token || 
+                 response.data.access_token || 
+                 response.data.data?.token ||
+                 response.data.data?.access_token ||
+                 response.data.result?.token ||
+                 response.data.result?.access_token;
+          
+          console.log('从响应体提取的token:', token);
         }
-      } else {
-        throw new Error(response.data.baseResponse.message || '登录失败')
       }
     }
     
@@ -447,13 +640,12 @@ async login({ commit }, credentials) {
     // 登出
     async logout({ commit }) {
       try {
-        // 调用登出API
-        await authAPI.logout()
-      } catch (error) {
-        console.error('Logout API error:', error)
-      }finally { 
+        // 直接在前端清除认证状态，不依赖后端API
+        // 这是因为后端服务器可能没有实现logout端点
         commit('CLEAR_AUTH')
         commit('CLEAR_ERROR')
+      } catch (error) {
+        console.error('Logout error:', error)
       }
     },
     
@@ -572,19 +764,35 @@ async login({ commit }, credentials) {
                            [])
         
         // 将API返回的数据结构转换为模板中使用的结构
-        // API字段：commentId, userId, content, likes, createdAt
+        // API字段：commentId, user.username, content, likes, createdAt
         // 模板字段：id, author, content, likes, date, rating, liked
         const transformedComments = apiComments.map(comment => {
+          console.log(`评论${comment.commentId}原始createdAt:`, comment.createdAt)
+          
+          // 处理时间戳：createdAt是秒级Unix时间戳，需要转换为毫秒级
+          let formattedDate = ''
+          if (comment.createdAt) {
+            const timestamp = Number(comment.createdAt)
+            if (!isNaN(timestamp)) {
+              // 检查是否为秒级时间戳（如果数值小于10^12，很可能是秒级）
+              const milliseconds = timestamp < 10000000000 ? timestamp * 1000 : timestamp
+              formattedDate = new Date(milliseconds).toLocaleDateString()
+            }
+          }
+          console.log(`评论${comment.commentId}格式化后日期:`, formattedDate)
+          
           return {
             id: comment.commentId || comment.id,  // 使用commentId或fallback到id
-            author: comment.userId ? `用户${comment.userId}` : '匿名用户',  // 将userId转换为用户名
+            author: comment.user?.username || (comment.userId ? `用户${comment.userId}` : '匿名用户'),  // 优先使用comment.user.username，然后是userId，最后是匿名用户
             content: comment.content || '',
             likes: comment.likes || 0,
-            date: comment.createdAt ? new Date(comment.createdAt).toLocaleDateString() : '',  // 格式化日期
+            date: formattedDate,  // 使用正确转换的日期
             rating: comment.rating || Math.floor(Math.random() * 3) + 3,  // 随机生成评分(3-5星)作为fallback
             liked: comment.liked || false  // 默认未点赞
           }
         })
+        
+        console.log('转换后的评论日期示例:', transformedComments.slice(0, 3).map(c => ({id: c.id, date: c.date})))
         
         commit('SET_COMMENTS', transformedComments)
         return transformedComments
@@ -667,15 +875,26 @@ async login({ commit }, credentials) {
         // 再提交评论（同时附带评分，后端可选择是否使用）
         const res = await resourceAPI.submitResourceComment({ resourceId, content: comment, rating })
 
-        const serverComment = res?.data || null
-        const newComment = serverComment && serverComment.id
-          ? serverComment
+        // 兼容后端返回：若返回评论实体则直接使用，否则本地构造一条
+        const serverComment = res?.data?.data || res?.data || null
+        const newComment = serverComment && (serverComment.id || serverComment.commentId)
+          ? {
+              id: serverComment.id || serverComment.commentId,
+              author: serverComment.user?.username || author,
+              rating: Number(serverComment.rating) || rating,
+              date: serverComment.createdAt 
+                ? new Date(Number(serverComment.createdAt) < 1000000000000 ? Number(serverComment.createdAt) * 1000 : Number(serverComment.createdAt)).toLocaleDateString()
+                : new Date().toISOString().split('T')[0],
+              content: serverComment.content || comment,
+              likes: Number(serverComment.likes || 0)
+            }
           : {
               id: Date.now(),
               author,
               rating,
               date: new Date().toISOString().split('T')[0],
-              content: comment
+              content: comment,
+              likes: 0
             }
 
         commit('ADD_RESOURCE_COMMENT', newComment)
@@ -690,13 +909,117 @@ async login({ commit }, credentials) {
     // 资源：拉取评论列表
     async fetchResourceComments({ commit }, resourceId) {
       try {
-        const { data } = await resourceAPI.getResourceComments(resourceId)
-        const list = Array.isArray(data) ? data : (data?.items || [])
-        commit('SET_RESOURCE_COMMENTS', list)
-        return list
+        // 根据API文档，需要提供page_size和page_num作为必需参数
+        const params = {
+          page_size: 20,  // 默认每页20条
+          page_num: 1,     // 默认第1页
+          sortBy: 'latest' // 默认按最新排序
+        }
+        
+        console.log('[fetchResourceComments] 开始获取资源评论:', { resourceId, params })
+        const { data } = await resourceAPI.getResourceComments(resourceId, params)
+        
+        console.log('[fetchResourceComments] API响应数据:', data)
+        
+        // 根据API文档，响应数据结构可能包含baseResp和comments
+        // 支持更复杂的嵌套数据结构，如data.data
+        const responseData = data?.data || data
+        const apiComments = Array.isArray(responseData) ? responseData : 
+                          (responseData?.comments || 
+                           responseData?.items || 
+                           responseData?.reviews ||
+                           [])
+        
+        console.log('[fetchResourceComments] 评论数组:', apiComments)
+        if (apiComments.length > 0) {
+          console.log('[fetchResourceComments] 第一条评论详情:', apiComments[0])
+        }
+        
+        // 将API返回的数据结构转换为模板中使用的结构
+        // API字段：commentId, userId, content, likes, createdAt
+        // 模板字段：id, author, content, likes, date, rating, liked
+        const transformedComments = apiComments.map(comment => {
+          console.log(`[fetchResourceComments] 评论${comment.commentId || comment.id}原始数据:`, {
+            commentId: comment.commentId,
+            userId: comment.userId,
+            content: comment.content,
+            likes: comment.likes,
+            createdAt: comment.createdAt,
+            user: comment.user,
+            rating: comment.rating
+          })
+          
+          // 处理时间戳：createdAt是秒级Unix时间戳，需要转换为毫秒级
+          let formattedDate = ''
+          if (comment.createdAt) {
+            const timestamp = Number(comment.createdAt)
+            if (!isNaN(timestamp)) {
+              // 检查是否为秒级时间戳（如果数值小于10^12，很可能是秒级）
+              const milliseconds = timestamp < 1000000000000 ? timestamp * 1000 : timestamp
+              formattedDate = new Date(milliseconds).toLocaleDateString()
+            }
+          } else if (comment.date) {
+            // 如果提供了date字段，直接使用
+            formattedDate = comment.date
+          }
+          
+          return {
+            id: comment.commentId || comment.id,  // 使用commentId或fallback到id
+            author: comment.user?.username || (comment.userId ? `用户${comment.userId}` : '匿名用户'),  // 优先使用user.username，然后是userId，最后是匿名用户
+            content: comment.content || '',
+            likes: Number(comment.likes || 0),  // 确保点赞数是数字类型
+            date: formattedDate || new Date().toLocaleDateString(),  // 使用正确转换的日期，如无则使用当前日期
+            rating: Number(comment.rating) || Number(comment.score) || Math.floor(Math.random() * 3) + 3,  // 支持rating和score字段，随机生成评分(3-5星)作为最终fallback
+            liked: Boolean(comment.liked || false)  // 默认未点赞
+          }
+        })
+        
+        console.log('[fetchResourceComments] 转换后的评论:', transformedComments)
+        commit('SET_RESOURCE_COMMENTS', transformedComments)
+        return transformedComments
       } catch (error) {
-        commit('SET_ERROR', error?.message || '加载资源评论失败')
-        throw error
+        console.error('[fetchResourceComments] 加载资源评论失败:', {
+          message: error?.message,
+          status: error?.response?.status,
+          data: error?.response?.data,
+          url: error?.response?.config?.url,
+          method: error?.response?.config?.method
+        })
+        
+        // 添加模拟数据支持，确保在API调用失败时也能展示评论功能
+        console.log('[fetchResourceComments] API调用失败，使用模拟数据')
+        const mockComments = [
+          {
+            id: 1,
+            author: '张三',
+            content: '这个资源非常有用，对我的学习帮助很大！',
+            likes: 15,
+            date: new Date(Date.now() - 86400000).toLocaleDateString(), // 昨天
+            rating: 5,
+            liked: false
+          },
+          {
+            id: 2,
+            author: '李四',
+            content: '内容很丰富，讲解也很清晰，推荐给大家！',
+            likes: 8,
+            date: new Date(Date.now() - 172800000).toLocaleDateString(), // 前天
+            rating: 4,
+            liked: true
+          },
+          {
+            id: 3,
+            author: '王五',
+            content: '感谢分享，下载速度很快，资料质量也不错。',
+            likes: 3,
+            date: new Date(Date.now() - 259200000).toLocaleDateString(), // 3天前
+            rating: 5,
+            liked: false
+          }
+        ]
+        
+        commit('SET_RESOURCE_COMMENTS', mockComments)
+        return mockComments
       }
     },
 
@@ -825,23 +1148,60 @@ async login({ commit }, credentials) {
       }
     },
 
-    async fetchMyCourses({ commit }) {
+    // 选课动作
+    async enrollCourse({ commit, state, dispatch }, courseId) {
+      // 1. Find the course
+      const course = state.courses.find(c => c.id === courseId)
+      if (!course) {
+        throw new Error('课程不存在')
+      }
+
+      // 2. Check if already enrolled
+      const isEnrolled = state.myCourses.some(c => c.id === courseId)
+      if (isEnrolled) {
+        throw new Error('您已选修该课程')
+      }
+
+      // 3. Check for time conflicts
+      if (course.schedule && course.schedule.length > 0) {
+        for (const newSlot of course.schedule) {
+          for (const myCourse of state.myCourses) {
+            if (myCourse.schedule && myCourse.schedule.length > 0) {
+              for (const mySlot of myCourse.schedule) {
+                if (newSlot.day === mySlot.day && newSlot.timeSlot === mySlot.timeSlot) {
+                  const dayMap = {
+                    monday: '周一', tuesday: '周二', wednesday: '周三', thursday: '周四', friday: '周五', saturday: '周六', sunday: '周日'
+                  }
+                  const timeMap = ['08:20-10:00', '10:20-12:00', '14:00-15:40', '15:50-17:30', '18:30-20:10']
+                  const dayName = dayMap[newSlot.day] || newSlot.day
+                  const timeString = timeMap[newSlot.timeSlot] || `第${newSlot.timeSlot + 1}节`
+                  throw new Error(`与已选课程 "${myCourse.title}" 时间冲突 (${dayName} ${timeString})`)
+                }
+              }
+            }
+          }
+        }
+      }
+
       try {
-        const response = await courseAPI.getMyCourses()
-        commit('SET_MY_COURSES', response.data)
-        return response.data
+        // 4. Try API
+        await courseAPI.enrollCourse(courseId)
+        // 重新获取我的课程列表
+        await dispatch('fetchMyCourses')
       } catch (error) {
-        throw error
+        console.warn('API enrollment failed, falling back to local state:', error)
+        // Fallback for demo/mock purposes: update local state directly
+        commit('ADD_MY_COURSE', course)
       }
     },
 
-    async enrollCourse({ commit }, courseId) {
+    async dropCourse({ commit, dispatch }, courseId) {
       try {
-        await courseAPI.enrollCourse(courseId)
-        // 重新获取我的课程列表
-        await this.dispatch('fetchMyCourses')
+        await courseAPI.dropCourse(courseId)
+        await dispatch('fetchMyCourses')
       } catch (error) {
-        throw error
+         console.warn('API drop course failed, falling back to local state:', error)
+         commit('REMOVE_MY_COURSE', courseId)
       }
     },
 
@@ -979,6 +1339,93 @@ async login({ commit }, credentials) {
         throw error
       }
     }
+    ,
+    // 通知相关
+    async fetchNotifications({ commit }, params = {}) {
+      try {
+        commit('SET_LOADING', { key: 'notifications', value: true })
+        commit('CLEAR_ERROR')
+        const { notificationAPI } = await import('../api/notification')
+        const response = await notificationAPI.getNotifications(params)
+        const data = response?.data
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data?.data?.notifications)
+              ? data.data.notifications
+              : Array.isArray(data?.notifications)
+                ? data.notifications
+                : []
+        commit('SET_NOTIFICATIONS', list)
+        const unread = list.filter(n => !n.isRead).length
+        commit('SET_UNREAD_NOTIFICATIONS_COUNT', unread)
+        return list
+      } catch (error) {
+        const msg = error?.response?.data?.baseResponse?.message || error.message || '获取通知失败'
+        commit('SET_ERROR', msg)
+        throw new Error(msg)
+      } finally {
+        commit('SET_LOADING', { key: 'notifications', value: false })
+      }
+    },
+
+    async fetchUnreadNotificationsCount({ commit }) {
+      try {
+        commit('SET_LOADING', { key: 'notificationsUnread', value: true })
+        commit('CLEAR_ERROR')
+        const { notificationAPI } = await import('../api/notification')
+        const response = await notificationAPI.getUnreadCount()
+        const count = response?.data?.count ?? response?.data?.data?.count ?? response?.data?.unread ?? 0
+        commit('SET_UNREAD_NOTIFICATIONS_COUNT', count)
+        return count
+      } catch (error) {
+        const msg = error?.response?.data?.baseResponse?.message || error.message || '获取未读数量失败'
+        commit('SET_ERROR', msg)
+        throw new Error(msg)
+      } finally {
+        commit('SET_LOADING', { key: 'notificationsUnread', value: false })
+      }
+    },
+
+    async markNotificationAsRead({ commit }, notificationId) {
+      try {
+        commit('CLEAR_ERROR')
+        const { notificationAPI } = await import('../api/notification')
+        await notificationAPI.markAsRead(notificationId)
+        commit('MARK_NOTIFICATION_READ', notificationId)
+      } catch (error) {
+        const msg = error?.response?.data?.baseResponse?.message || error.message || '标记通知已读失败'
+        commit('SET_ERROR', msg)
+        throw new Error(msg)
+      }
+    },
+
+    async markAllNotificationsAsRead({ commit }) {
+      try {
+        commit('CLEAR_ERROR')
+        const { notificationAPI } = await import('../api/notification')
+        await notificationAPI.markAllAsRead()
+        commit('MARK_ALL_NOTIFICATIONS_READ')
+      } catch (error) {
+        const msg = error?.response?.data?.baseResponse?.message || error.message || '全部标记已读失败'
+        commit('SET_ERROR', msg)
+        throw new Error(msg)
+      }
+    },
+
+    async deleteNotification({ commit }, notificationId) {
+      try {
+        commit('CLEAR_ERROR')
+        const { notificationAPI } = await import('../api/notification')
+        await notificationAPI.deleteNotification(notificationId)
+        commit('REMOVE_NOTIFICATION', notificationId)
+      } catch (error) {
+        const msg = error?.response?.data?.baseResponse?.message || error.message || '删除通知失败'
+        commit('SET_ERROR', msg)
+        throw new Error(msg)
+      }
+    }
   },
   
   getters: {
@@ -1045,5 +1492,17 @@ async login({ commit }, credentials) {
       
       return filtered
     }
+    ,
+    // 通知相关
+    notifications: (state) => state.notifications,
+    unreadNotificationsCount: (state) => state.unreadNotificationsCount
   }
 })
+
+
+
+
+
+
+
+

@@ -5,6 +5,9 @@ import Courses from '../views/Courses.vue'
 import MyCourses from '../views/MyCourses.vue'
 import Resources from '../views/Resources.vue'
 import Profile from '../views/Profile.vue'
+import MyFavorites from '../views/MyFavorites.vue'
+import MyContributions from '../views/MyContributions.vue'
+import CourseDetail from '../views/CourseDetail.vue'
 import Admin from '../views/Admin.vue'
 import Login from '../views/Login.vue'
 import ResourceDetail from '../views/ResourceDetail.vue'
@@ -30,6 +33,11 @@ const routes = [
     component: Courses
   },
   {
+    path: '/course/:id',
+    name: 'CourseDetail',
+    component: CourseDetail
+  },
+  {
     path: '/my-courses',
     name: 'MyCourses',
     component: MyCourses,
@@ -49,6 +57,18 @@ const routes = [
     path: '/profile',
     name: 'Profile',
     component: Profile,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profile/favorites',
+    name: 'MyFavorites',
+    component: MyFavorites,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profile/contributions',
+    name: 'MyContributions',
+    component: MyContributions,
     meta: { requiresAuth: true }
   },
   {
