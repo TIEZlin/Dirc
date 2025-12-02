@@ -18,7 +18,14 @@ export const adminAPI = {
     return api.get('/admin/users', { params })
   },
   createUser(userData) {
-    return api.post('/admin/users', userData)
+    console.log('[adminAPI.createUser] 发送的数据:', userData)
+    console.log('[adminAPI.createUser] 数据类型:', typeof userData)
+    console.log('[adminAPI.createUser] 数据键:', Object.keys(userData || {}))
+    return api.post('/admin/users', userData).catch(error => {
+      console.error('[adminAPI.createUser] 请求失败:', error)
+      console.error('[adminAPI.createUser] 错误响应:', error.response?.data)
+      throw error
+    })
   },
   updateUser(userData) {
     return api.put('/admin/users', userData)

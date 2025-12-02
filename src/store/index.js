@@ -60,7 +60,7 @@ export default new Vuex.Store({
     
     // 用户信息
     user: {
-      name: '张明同学',
+      name: '', // 将从登录后的用户名更新
       college: '计算机学院',
       grade: '2022级',
       role: 'user',
@@ -283,6 +283,18 @@ export default new Vuex.Store({
         sessionStorage.setItem('token', token)
   }
       sessionStorage.setItem('user', JSON.stringify(user))
+      
+      // 同步更新 state.user，使用后端返回的用户名
+      if (user && user.username) {
+        state.user.name = user.username
+      }
+      // 如果后端返回了其他用户信息，也可以同步更新
+      if (user && user.email) {
+        state.user.email = user.email
+      }
+      if (user && user.reputationScore !== undefined) {
+        state.user.creditScore = user.reputationScore
+      }
 },
     
     CLEAR_AUTH(state) {
@@ -297,9 +309,21 @@ export default new Vuex.Store({
       const token = sessionStorage.getItem('token')
       const user = sessionStorage.getItem('user')
       if (token && user) {
+        const parsedUser = JSON.parse(user)
         state.isAuthenticated = true
-        state.currentUser = JSON.parse(user)
+        state.currentUser = parsedUser
         state.token = token
+        
+        // 同步更新 state.user，使用保存的用户名
+        if (parsedUser && parsedUser.username) {
+          state.user.name = parsedUser.username
+        }
+        if (parsedUser && parsedUser.email) {
+          state.user.email = parsedUser.email
+        }
+        if (parsedUser && parsedUser.reputationScore !== undefined) {
+          state.user.creditScore = parsedUser.reputationScore
+        }
       }
     },
     
@@ -1558,13 +1582,86 @@ async login({ commit }, credentials) {
     async fetchUsers({ commit }, params = {}) {
       try {
         commit('SET_LOADING', { key: 'users', value: true })
-        const response = await adminAPI.getUsers(params)
+        
+        // 确保分页参数是字符串类型（根据接口文档）
+        const requestParams = {
+          page_size: params.page_size ? String(params.page_size) : undefined,
+          page_num: params.page_num ? String(params.page_num) : undefined
+        }
+        // 移除 undefined 值
+        Object.keys(requestParams).forEach(key => {
+          if (requestParams[key] === undefined) {
+            delete requestParams[key]
+          }
+        })
+        
+        const response = await adminAPI.getUsers(requestParams)
+        console.log('[fetchUsers] 完整响应:', response)
+        console.log('[fetchUsers] response.data:', response?.data)
+        console.log('[fetchUsers] response.data 类型:', typeof response?.data)
+        console.log('[fetchUsers] response.data 是否为数组:', Array.isArray(response?.data))
+        
         const data = response?.data || {}
         
         // 尝试从多个可能的字段中提取用户列表
-        const rawList = Array.isArray(data.users)
-          ? data.users
-          : (Array.isArray(data.userList) ? data.userList : (Array.isArray(data) ? data : []))
+        // 1. 直接是数组 (response.data 本身就是数组)
+        // 2. data.data (嵌套结构，如 { code: 200, data: [...] })
+        // 3. data.users
+        // 4. data.userList
+        // 5. data.list
+        // 6. data.result
+        let rawList = []
+        
+        if (Array.isArray(data)) {
+          rawList = data
+          console.log('[fetchUsers] 从 data (数组) 提取数据')
+        } else if (Array.isArray(data.data)) {
+          rawList = data.data
+          console.log('[fetchUsers] 从 data.data 提取数据')
+        } else if (Array.isArray(data.users)) {
+          rawList = data.users
+          console.log('[fetchUsers] 从 data.users 提取数据')
+        } else if (Array.isArray(data.userList)) {
+          rawList = data.userList
+          console.log('[fetchUsers] 从 data.userList 提取数据')
+        } else if (Array.isArray(data.list)) {
+          rawList = data.list
+          console.log('[fetchUsers] 从 data.list 提取数据')
+        } else if (data.result && Array.isArray(data.result)) {
+          rawList = data.result
+          console.log('[fetchUsers] 从 data.result 提取数据')
+        } else {
+          // 如果都没有找到，尝试遍历所有值，找到第一个数组
+          const allKeys = Object.keys(data)
+          for (const key of allKeys) {
+            const value = data[key]
+            if (Array.isArray(value)) {
+              rawList = value
+              console.log(`[fetchUsers] 从 data.${key} 提取数据 (自动发现)`)
+              break
+            } else if (value && typeof value === 'object') {
+              // 检查嵌套对象中的数组
+              const nestedKeys = Object.keys(value)
+              for (const nestedKey of nestedKeys) {
+                if (Array.isArray(value[nestedKey])) {
+                  rawList = value[nestedKey]
+                  console.log(`[fetchUsers] 从 data.${key}.${nestedKey} 提取数据 (自动发现嵌套)`)
+                  break
+                }
+              }
+              if (rawList.length > 0) break
+            }
+          }
+          
+          // 如果还是没有找到，打印所有可能的键
+          if (rawList.length === 0) {
+            console.warn('[fetchUsers] 未找到用户列表，data 的所有键:', Object.keys(data))
+            console.warn('[fetchUsers] data 的完整内容:', JSON.stringify(data, null, 2))
+          }
+        }
+        
+        console.log('[fetchUsers] 提取的用户列表:', rawList)
+        console.log('[fetchUsers] 用户数量:', rawList.length)
 
         // 映射后端字段到前端字段
         const mapped = rawList.map((u) => ({
@@ -1578,10 +1675,20 @@ async login({ commit }, credentials) {
           raw: u
         }))
 
+        console.log('[fetchUsers] 映射后的用户列表:', mapped)
         commit('SET_USERS', mapped)
-        return { ...data, users: mapped }
+        
+        // 返回数据，包括分页信息
+        return {
+          users: mapped,
+          total: data.total || data.totalCount || data.total_count || data.totalCount || mapped.length,
+          pageSize: data.page_size || data.pageSize || params.page_size,
+          pageNum: data.page_num || data.pageNum || params.page_num,
+          ...data
+        }
       } catch (error) {
         console.error('[fetchUsers] 获取用户列表失败:', error)
+        console.error('[fetchUsers] 错误详情:', error.response?.data)
         // 清空用户列表，避免显示旧数据
         commit('SET_USERS', [])
         throw error
@@ -1592,9 +1699,14 @@ async login({ commit }, credentials) {
 
     async createAdminUser({ dispatch }, payload) {
       try {
-        await adminAPI.createUser(payload)
-        await dispatch('fetchUsers')
+        console.log('[createAdminUser] 创建用户，payload:', payload)
+        const response = await adminAPI.createUser(payload)
+        console.log('[createAdminUser] 创建用户成功，response:', response)
+        // 注意：这里不自动刷新用户列表，由组件自己处理
+        // await dispatch('fetchUsers')
       } catch (error) {
+        console.error('[createAdminUser] 创建用户失败:', error)
+        console.error('[createAdminUser] 错误响应:', error.response?.data)
         throw error
       }
     },
