@@ -96,11 +96,9 @@
           </div>
           <h3 class="font-bold dark:text-white">{{ resource.title }}</h3>
         </div>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ resource.course }} · {{ resource.semester }}</p>
         <div class="flex justify-between mt-auto">
           <div class="flex items-center text-sm">
             <div class="bg-gray-200 dark:bg-gray-600 border-2 border-dashed border-gray-300 dark:border-gray-500 rounded-xl w-6 h-6 mr-2"></div>
-            <span class="dark:text-gray-300">{{ resource.author }}</span>
           </div>
           <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
             <div class="star-rating flex mr-2">
