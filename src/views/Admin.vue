@@ -176,37 +176,71 @@
               </div>
             </div>
 
-            <div v-if="filteredUsers.length === 0" class="text-gray-500">暂无用户数据。</div>
-            <div v-else class="overflow-x-auto">
-              <table class="w-full">
-                <thead>
-                  <tr class="border-b border-gray-200">
-                    <th class="text-left py-3 text-gray-600 font-medium">用户ID</th>
-                    <th class="text-left py-3 text-gray-600 font-medium">用户名</th>
-                    <th class="text-left py-3 text-gray-600 font-medium">学院</th>
-                    <th class="text-left py-3 text-gray-600 font-medium">账户状态</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="user in filteredUsers"
-                    :key="user.id"
-                    class="border-b border-gray-100"
+            <div v-if="filteredUsers.length === 0" class="text-gray-500">
+              暂无用户数据。
+              <div class="text-xs mt-2 text-gray-400">
+                调试信息: users.length = {{ users?.length || 0 }}, 
+                filteredUsers.length = {{ filteredUsers?.length || 0 }}
+              </div>
+            </div>
+            <div v-else>
+              <div class="overflow-x-auto">
+                <table class="w-full">
+                  <thead>
+                    <tr class="border-b border-gray-200">
+                      <th class="text-left py-3 text-gray-600 font-medium">用户ID</th>
+                      <th class="text-left py-3 text-gray-600 font-medium">用户名</th>
+                      <th class="text-left py-3 text-gray-600 font-medium">学院</th>
+                      <th class="text-left py-3 text-gray-600 font-medium">账户状态</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="user in filteredUsers"
+                      :key="user.id"
+                      class="border-b border-gray-100"
+                    >
+                      <td class="py-3">{{ user.id }}</td>
+                      <td class="py-3 font-medium">{{ user.name || user.username }}</td>
+                      <td class="py-3 text-gray-600">{{ user.college || user.college_name || '—' }}</td>
+                      <td class="py-3">
+                        <span
+                          class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                          :class="getStatusClass(user.status)"
+                        >
+                          {{ user.status || 'active' }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- 分页控件 -->
+              <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                <div class="text-sm text-gray-600">
+                  共 {{ userTotal || filteredUsers.length }} 条记录，第 {{ userPageNum }} 页
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    class="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    :disabled="userPageNum <= 1"
+                    @click="changeUserPage(userPageNum - 1)"
                   >
-                    <td class="py-3">{{ user.id }}</td>
-                    <td class="py-3 font-medium">{{ user.name || user.username }}</td>
-                    <td class="py-3 text-gray-600">{{ user.college || user.college_name || '—' }}</td>
-                    <td class="py-3">
-                      <span
-                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                        :class="getStatusClass(user.status)"
-                      >
-                        {{ user.status || 'active' }}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    上一页
+                  </button>
+                  <span class="px-3 py-1 text-sm">
+                    {{ userPageNum }} / {{ Math.ceil((userTotal || filteredUsers.length) / userPageSize) || 1 }}
+                  </span>
+                  <button
+                    class="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    :disabled="userPageNum >= Math.ceil((userTotal || filteredUsers.length) / userPageSize)"
+                    @click="changeUserPage(userPageNum + 1)"
+                  >
+                    下一页
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -478,6 +512,10 @@ export default {
       resourceSearchKeyword: '',
       reviewType: 'resources',
       reviewLoading: false,
+      // 用户列表分页
+      userPageSize: 20,
+      userPageNum: 1,
+      userTotal: 0,
       newUserForm: {
         username: '',
         email: '',
@@ -675,7 +713,14 @@ export default {
       try {
         await Promise.all([
           this.fetchStatistics(),
-          this.fetchUsers(),
+          this.fetchUsers({ page_size: this.userPageSize, page_num: this.userPageNum }).then(result => {
+            // 更新总数
+            if (result?.total !== undefined) {
+              this.userTotal = result.total
+            } else if (result?.totalCount !== undefined) {
+              this.userTotal = result.totalCount
+            }
+          }),
           this.fetchResourceReviewList(),
           this.fetchCourses(),
           this.fetchResources()
@@ -687,7 +732,7 @@ export default {
     async ensureUsersLoaded() {
       if (!Array.isArray(this.users) || this.users.length === 0) {
         try {
-          await this.fetchUsers()
+          await this.fetchUsers({ page_size: this.userPageSize, page_num: this.userPageNum })
         } catch (error) {
           this.handleError(error, '加载用户数据失败')
         }
@@ -729,10 +774,31 @@ export default {
     },
     async reloadUsers() {
       try {
-        await this.fetchUsers()
+        this.userPageNum = 1 // 重置到第一页
+        const result = await this.fetchUsers({ page_size: this.userPageSize, page_num: this.userPageNum })
+        // 更新总数（如果后端返回了总数）
+        if (result?.total !== undefined) {
+          this.userTotal = result.total
+        } else if (result?.totalCount !== undefined) {
+          this.userTotal = result.totalCount
+        }
         this.notifySuccess('用户列表已更新')
       } catch (error) {
         this.handleError(error, '刷新用户列表失败')
+      }
+    },
+    async changeUserPage(newPage) {
+      if (newPage < 1) return
+      this.userPageNum = newPage
+      try {
+        const result = await this.fetchUsers({ page_size: this.userPageSize, page_num: this.userPageNum })
+        if (result?.total !== undefined) {
+          this.userTotal = result.total
+        } else if (result?.totalCount !== undefined) {
+          this.userTotal = result.totalCount
+        }
+      } catch (error) {
+        this.handleError(error, '加载用户数据失败')
       }
     },
     viewCourseDetail(course) {
@@ -841,15 +907,59 @@ export default {
       return map[normalized] || '未知'
     },
     async submitNewUser() {
-      if (!this.newUserForm.username || !this.newUserForm.email || !this.newUserForm.password || !this.newUserForm.role_id) {
+      // 验证必填字段
+      const username = (this.newUserForm.username || '').trim()
+      const email = (this.newUserForm.email || '').trim()
+      const password = (this.newUserForm.password || '').trim()
+      const roleId = this.newUserForm.role_id
+      
+      if (!username || !email || !password || !roleId) {
         this.handleError(new Error('请完整填写用户信息'), '请完整填写用户信息')
         return
       }
+      
+      // 验证邮箱格式
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(email)) {
+        this.handleError(new Error('邮箱格式不正确'), '邮箱格式不正确')
+        return
+      }
+      
       try {
-        await this.createAdminUser({ ...this.newUserForm })
+        // 根据后端实际要求，role_id 应该是数字类型（int64）
+        // 虽然接口文档写的是 string，但实际后端期望 int64
+        const userData = {
+          username: String(username),
+          password: String(password),
+          email: String(email),
+          role_id: Number(roleId) || parseInt(roleId, 10), // 转换为数字类型
+          status: String(this.newUserForm.status || 'active')
+        }
+        
+        // 验证 role_id 是否为有效数字
+        if (isNaN(userData.role_id)) {
+          this.handleError(new Error('角色ID无效'), '角色ID无效')
+          return
+        }
+        
+        console.log('[submitNewUser] 提交的用户数据:', userData)
+        console.log('[submitNewUser] 数据验证通过，所有字段:', Object.keys(userData).map(k => `${k}: ${typeof userData[k]} = ${JSON.stringify(userData[k])}`))
+        
+        await this.createAdminUser(userData)
         this.notifySuccess('用户创建成功')
         this.newUserForm = { username: '', email: '', password: '', role_id: '', status: 'active' }
+        // 刷新用户列表，使用当前分页参数
+        const result = await this.fetchUsers({ page_size: this.userPageSize, page_num: this.userPageNum })
+        if (result?.total !== undefined) {
+          this.userTotal = result.total
+        } else if (result?.totalCount !== undefined) {
+          this.userTotal = result.totalCount
+        }
       } catch (error) {
+        console.error('[submitNewUser] 创建用户失败:', error)
+        console.error('[submitNewUser] 错误响应:', error.response?.data)
+        console.error('[submitNewUser] 错误状态码:', error.response?.status)
+        console.error('[submitNewUser] 完整错误对象:', JSON.stringify(error.response?.data, null, 2))
         this.handleError(error, '创建用户失败')
       }
     },
@@ -921,12 +1031,21 @@ export default {
       }
     },
     handleError(error, fallbackMessage) {
+      console.error('[handleError] 错误详情:', error)
+      console.error('[handleError] 错误响应:', error?.response?.data)
+      
+      // 尝试从多个可能的字段中提取错误消息
       const message =
+        error?.response?.data?.baseResponse?.message ||
         error?.response?.data?.base_resp?.message ||
         error?.response?.data?.baseResp?.message ||
+        error?.response?.data?.message ||
         error?.message ||
         fallbackMessage ||
         '操作失败'
+      
+      console.error('[handleError] 最终错误消息:', message)
+      
       if (this.$root && this.$root.$emit) {
         this.$root.$emit('message', message, 'error')
       } else {
